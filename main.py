@@ -27,12 +27,16 @@ async def main():
     # START handler
     @dp.message(Command("start"))
     async def start_handler(message: Message):
-        user_id = message.from_user.id
-
-        if user_id == ADMIN_ID:
-            await message.answer("👨‍💼 Admin panel", reply_markup=admin_menu())
+        if message.from_user.id == ADMIN_ID:
+            await message.answer(
+                "👨‍💼 Admin panel",
+                reply_markup=admin_menu()
+            )
         else:
-            await message.answer("👤 Mijoz panel", reply_markup=client_panel())
+            await message.answer(
+                "👤 Mijoz panel",
+                reply_markup=client_panel()
+            )
 
     print("🚀 Bot ishga tushdi...")
 
