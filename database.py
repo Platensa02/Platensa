@@ -1,7 +1,7 @@
 import asyncpg
 from config import DATABASE_URL
 
-# Database connection pool
+# Database connection
 async def create_pool():
     return await asyncpg.create_pool(DATABASE_URL)
 
@@ -9,7 +9,7 @@ async def create_pool():
 async def init_db(pool):
     async with pool.acquire() as conn:
 
-        # Users table
+        # Mijozlar
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -18,7 +18,7 @@ async def init_db(pool):
         );
         """)
 
-        # Usage table
+        # Ishlatishlar
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS usage (
             id SERIAL PRIMARY KEY,
@@ -28,7 +28,7 @@ async def init_db(pool):
         );
         """)
 
-        # Payments table
+        # To‘lovlar
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS payments (
             id SERIAL PRIMARY KEY,
