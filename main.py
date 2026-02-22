@@ -1,36 +1,44 @@
 import asyncio
+import logging
+
 from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 from aiogram.types import Message
-from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN, ADMIN_ID
-from database import create_pool, init_db
+from database import connect_db, create_tables, close_db
 
-# Routers
-from handlers import admin, admin_clients, usage, payment, client
-from keyboards import admin_menu, client_menu
+from handlers import start, admin, usage, payment
+from keyboards.reply import admin_menu, client_menu
 
 
+# =========================
+# LOGGING
+# =========================
+logging.basicConfig(level=logging.INFO)
+
+
+# =========================
+# MAIN
+# =========================
 async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
 
-    # Database
-    pool = await create_pool()
-    dp["db"] = pool
-    await init_db(pool)
+    # 🔥 DATABASE
+    await connect_db()
+    await create_tables()
 
-    # 🔥 TO‘G‘RI ROUTER TARTIBI
+    # 🔥 ROUTERS
+    dp.include_router(start.router)
     dp.include_router(admin.router)
-    dp.include_router(admin_clients.router)
     dp.include_router(usage.router)
     dp.include_router(payment.router)
-    dp.include_router(client.router)   # HAR DOIM OXIRIDA
 
-    # START COMMAND
+    # 🔥 START COMMAND
     @dp.message(Command("start"))
-    async def start(message: Message):
+    async def start_handler(message: Message):
         if message.from_user.id == ADMIN_ID:
             await message.answer(
                 "👨‍💼 Admin Panel",
@@ -42,10 +50,16 @@ async def main():
                 reply_markup=client_menu()
             )
 
-    print("🚀 CRM Bot ishga tushdi...")
-
+    # 🔥 BOT START
+    logging.info("🚀 Bot ishga tushdi...")
     await dp.start_polling(bot)
 
+    # 🔥 CLEAN EXIT
+    await close_db()
 
+
+# =========================
+# RUN
+# =========================
 if __name__ == "__main__":
     asyncio.run(main())
