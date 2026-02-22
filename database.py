@@ -1,7 +1,9 @@
 import asyncpg
-import asyncio
 from config import DATABASE_URL
 
+# =========================
+# GLOBAL POOL
+# =========================
 pool: asyncpg.Pool | None = None
 
 
@@ -10,12 +12,11 @@ pool: asyncpg.Pool | None = None
 # =========================
 async def connect_db():
     global pool
-    if pool is None:
-        pool = await asyncpg.create_pool(
-            dsn=DATABASE_URL,
-            min_size=1,
-            max_size=10
-        )
+    pool = await asyncpg.create_pool(
+        dsn=DATABASE_URL,
+        min_size=1,
+        max_size=10
+    )
 
 
 # =========================
@@ -32,6 +33,8 @@ async def close_db():
 # =========================
 async def create_tables():
     async with pool.acquire() as conn:
+
+        # USERS
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -41,6 +44,7 @@ async def create_tables():
         );
         """)
 
+        # USAGES
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS usages (
             id SERIAL PRIMARY KEY,
@@ -51,6 +55,7 @@ async def create_tables():
         );
         """)
 
+        # PAYMENTS
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS payments (
             id SERIAL PRIMARY KEY,
@@ -64,6 +69,14 @@ async def create_tables():
 # =========================
 # USER FUNCTIONS
 # =========================
+async def create_user(telegram_id: int):
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO users (telegram_id) VALUES ($1) ON CONFLICT DO NOTHING",
+            telegram_id
+        )
+
+
 async def get_user_by_tg(telegram_id: int):
     async with pool.acquire() as conn:
         return await conn.fetchrow(
@@ -72,11 +85,11 @@ async def get_user_by_tg(telegram_id: int):
         )
 
 
-async def create_user(telegram_id: int):
+async def delete_user(user_id: int):
     async with pool.acquire() as conn:
-        return await conn.execute(
-            "INSERT INTO users (telegram_id) VALUES ($1) ON CONFLICT DO NOTHING",
-            telegram_id
+        await conn.execute(
+            "DELETE FROM users WHERE id=$1",
+            user_id
         )
 
 
@@ -88,25 +101,7 @@ async def get_all_active_users():
 
 
 # =========================
-# STATS
-# =========================
-async def get_user_stats(user_id: int):
-    async with pool.acquire() as conn:
-        result = await conn.fetchrow("""
-            SELECT
-                COALESCE((SELECT SUM(amount) FROM usages WHERE user_id=$1 AND confirmed=TRUE),0) as used,
-                COALESCE((SELECT SUM(amount) FROM payments WHERE user_id=$1),0) as paid
-        """, user_id)
-
-        used = result["used"]
-        paid = result["paid"]
-        debt = used - paid
-
-        return used, paid, debt
-
-
-# =========================
-# USAGE
+# USAGE FUNCTIONS
 # =========================
 async def create_usage(user_id: int, amount: int):
     async with pool.acquire() as conn:
@@ -119,22 +114,23 @@ async def create_usage(user_id: int, amount: int):
 
 async def confirm_usage(usage_id: int):
     async with pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE usages SET confirmed=TRUE WHERE id=$1",
-            usage_id
-        )
+        await conn.execute("""
+            UPDATE usages
+            SET confirmed=TRUE
+            WHERE id=$1
+        """, usage_id)
 
 
 async def reject_usage(usage_id: int):
     async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM usages WHERE id=$1",
-            usage_id
-        )
+        await conn.execute("""
+            DELETE FROM usages
+            WHERE id=$1
+        """, usage_id)
 
 
 # =========================
-# PAYMENT
+# PAYMENT FUNCTIONS
 # =========================
 async def create_payment(user_id: int, amount: int):
     async with pool.acquire() as conn:
@@ -142,3 +138,25 @@ async def create_payment(user_id: int, amount: int):
             INSERT INTO payments (user_id, amount)
             VALUES ($1, $2)
         """, user_id, amount)
+
+
+# =========================
+# ACCOUNTING
+# =========================
+async def get_user_stats(user_id: int):
+    async with pool.acquire() as conn:
+        result = await conn.fetchrow("""
+            SELECT
+                COALESCE((SELECT SUM(amount)
+                          FROM usages
+                          WHERE user_id=$1 AND confirmed=TRUE),0) AS used,
+                COALESCE((SELECT SUM(amount)
+                          FROM payments
+                          WHERE user_id=$1),0) AS paid
+        """, user_id)
+
+        used = result["used"]
+        paid = result["paid"]
+        debt = used - paid
+
+        return used, paid, debt
