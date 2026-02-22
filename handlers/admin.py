@@ -7,6 +7,10 @@ from config import ADMIN_ID
 
 router = Router()
 
+@router.message(AddClient.waiting_for_id)
+async def process_client_id(message: Message, state: FSMContext):
+    print("STATE WORKS")
+    await message.answer("TEST")
 
 # ➕ Mijoz qo‘shishni boshlash (masalan callback_data="add_client")
 @router.callback_query(F.data == "add_client")
