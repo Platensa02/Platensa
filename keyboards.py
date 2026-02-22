@@ -1,19 +1,28 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# ADMIN MENYU
+# 👨‍💼 ADMIN MENYU
 def admin_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="👥 Mijozlar", callback_data="clients")]
     ])
 
-# MIJOZ MENYU (FAQAT 2 TA TUGMA)
-def client_panel():
+# 👤 MIJOZ MENYU (faqat 2 tugma)
+def client_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📦 Jami ishlatganim", callback_data="my_used")],
         [InlineKeyboardButton(text="📊 Qolganim", callback_data="my_left")]
     ])
 
-# ORQAGA
+# 🔔 TASDIQLASH
+def confirm_keyboard(usage_id):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Ha", callback_data=f"confirm_{usage_id}"),
+            InlineKeyboardButton(text="❌ Yo'q", callback_data=f"deny_{usage_id}")
+        ]
+    ])
+
+# 🔙 ORQAGA
 def back_button():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back")]
