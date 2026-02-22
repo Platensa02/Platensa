@@ -6,8 +6,10 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN, ADMIN_ID
 from database import create_pool, init_db
-from handlers import admin, client
+
+from handlers import admin, client, admin_clients, usage, payment
 from keyboards import admin_menu, client_menu
+
 
 async def main():
     bot = Bot(token=BOT_TOKEN)
@@ -21,31 +23,21 @@ async def main():
     # Routers
     dp.include_router(admin.router)
     dp.include_router(client.router)
+    dp.include_router(admin_clients.router)
+    dp.include_router(usage.router)
+    dp.include_router(payment.router)
 
-    # START COMMAND
+    # START
     @dp.message(Command("start"))
-    async def start_handler(message: Message):
-        user_id = message.from_user.id
-
-        if user_id == ADMIN_ID:
+    async def start(message: Message):
+        if message.from_user.id == ADMIN_ID:
             await message.answer(
-                "👨‍💼 Admin panel",
+                "👨‍💼 Admin Panel",
                 reply_markup=admin_menu()
             )
         else:
-            # User aktivligini tekshirish
-            async with pool.acquire() as conn:
-                user = await conn.fetchrow(
-                    "SELECT is_active FROM users WHERE telegram_id=$1",
-                    user_id
-                )
-
-            if not user or not user["is_active"]:
-                await message.answer("⛔ Sizga ruxsat berilmagan.")
-                return
-
             await message.answer(
-                "👤 Mijoz panel",
+                "👤 Mijoz Panel",
                 reply_markup=client_menu()
             )
 
