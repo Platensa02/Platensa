@@ -7,7 +7,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import BOT_TOKEN, ADMIN_ID
 from database import create_pool, init_db
 
-from handlers import admin, client, admin_clients, usage, payment
+# Routers
+from handlers import admin, admin_clients, usage, payment, client
 from keyboards import admin_menu, client_menu
 
 
@@ -20,14 +21,14 @@ async def main():
     dp["db"] = pool
     await init_db(pool)
 
-    # Routers
+    # 🔥 TO‘G‘RI ROUTER TARTIBI
     dp.include_router(admin.router)
-    dp.include_router(client.router)
     dp.include_router(admin_clients.router)
     dp.include_router(usage.router)
     dp.include_router(payment.router)
+    dp.include_router(client.router)   # HAR DOIM OXIRIDA
 
-    # START
+    # START COMMAND
     @dp.message(Command("start"))
     async def start(message: Message):
         if message.from_user.id == ADMIN_ID:
