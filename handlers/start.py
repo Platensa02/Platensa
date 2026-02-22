@@ -14,35 +14,22 @@ async def start_handler(message: Message):
 
     user_id = message.from_user.id
 
-    # =========================
-    # 👨‍💼 ADMIN
-    # =========================
+    # ADMIN
     if user_id == ADMIN_ID:
-        await message.answer(
-            "👨‍💼 Admin Panel",
-            reply_markup=admin_menu()
-        )
+        await message.answer("👨‍💼 Admin Panel", reply_markup=admin_menu())
         return
 
-    # =========================
-    # 👤 CLIENT CHECK
-    # =========================
+    # CLIENT
     user = await get_user_by_tg(user_id)
 
-    # Agar user yo‘q bo‘lsa → yaratamiz
+    # Agar user yo‘q bo‘lsa — yaratamiz
     if not user:
         await create_user(user_id)
         user = await get_user_by_tg(user_id)
 
-    # Agar aktiv emas bo‘lsa
+    # Agar blok bo‘lsa
     if not user["is_active"]:
         await message.answer("⛔ Sizga ruxsat yo‘q.")
         return
 
-    # =========================
-    # 👤 CLIENT PANEL
-    # =========================
-    await message.answer(
-        "👤 Mijoz Panel",
-        reply_markup=client_menu()
-    )
+    await message.answer("👤 Mijoz Panel", reply_markup=client_menu())
