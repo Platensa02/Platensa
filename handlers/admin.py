@@ -1,81 +1,90 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
-from aiogram.fsm.context import FSMContext
+from aiogram.types import Message, CallbackQuery
 
-from states import AddClient
 from config import ADMIN_ID
+from database import get_all_active_users, delete_user, get_user_stats
+from keyboards.inline import (
+    clients_list_keyboard,
+    client_actions_keyboard
+)
+from keyboards.reply import admin_menu
 
 router = Router()
 
-@router.message(AddClient.waiting_for_id)
-async def process_client_id(message: Message, state: FSMContext):
+
+# =========================
+# 👥 MIJOZLAR RO‘YXATI
+# =========================
+@router.message(F.text == "👥 Mijozlar")
+async def show_clients(message: Message):
 
     if message.from_user.id != ADMIN_ID:
         return
 
-    if not message.text.isdigit():
-        await message.answer("❌ Faqat raqam kiriting!")
+    clients = await get_all_active_users()
+
+    if not clients:
+        await message.answer("❌ Mijozlar yo‘q.")
         return
 
-    user_id = int(message.text)
+    await message.answer(
+        "👥 Mijozlar ro‘yxati:",
+        reply_markup=clients_list_keyboard(clients)
+    )
 
-    # 🔥 DB ni xavfsiz olish
-    dp = message.bot
-    pool = dp.get("db")
 
-    if not pool:
-        await message.answer("❌ Database ulanmagan!")
-        return
-
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO users (telegram_id, is_active)
-            VALUES ($1, TRUE)
-            ON CONFLICT (telegram_id)
-            DO UPDATE SET is_active = TRUE
-        """, user_id)
-
-    await message.answer("✅ Mijoz qo‘shildi.")
-    await state.clear()
-
-@router.message(AddClient.waiting_for_id)
-async def process_client_id(message: Message, state: FSMContext):
-    print("STATE WORKS")
-    await message.answer("TEST")
-
-# ➕ Mijoz qo‘shishni boshlash (masalan callback_data="add_client")
-@router.callback_query(F.data == "add_client")
-async def start_add_client(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
+# =========================
+# 👤 MIJOZ TANLASH
+# =========================
+@router.callback_query(F.data.startswith("client_"))
+async def open_client(callback: CallbackQuery):
 
     if callback.from_user.id != ADMIN_ID:
         return
 
-    await state.set_state(AddClient.waiting_for_id)
-    await callback.message.answer("👥 Yangi mijoz Telegram ID sini yozing:")
+    user_id = int(callback.data.split("_")[1])
+
+    used, paid, debt = await get_user_stats(user_id)
+
+    text = (
+        f"👤 Mijoz ID: {user_id}\n\n"
+        f"📦 Jami ishlatilgan: {used}\n"
+        f"💰 To‘langan: {paid}\n"
+        f"📊 Qolgan: {debt}"
+    )
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=client_actions_keyboard(user_id)
+    )
 
 
-# 📩 ID qabul qilish
-@router.message(AddClient.waiting_for_id)
-async def process_client_id(message: Message, state: FSMContext):
+# =========================
+# 🗑 FULL DELETE
+# =========================
+@router.callback_query(F.data.startswith("delete_user_"))
+async def delete_client(callback: CallbackQuery):
 
-    if message.from_user.id != ADMIN_ID:
+    if callback.from_user.id != ADMIN_ID:
         return
 
-    if not message.text.isdigit():
-        await message.answer("❌ Faqat raqam kiriting!")
+    user_id = int(callback.data.split("_")[1])
+
+    await delete_user(user_id)
+
+    await callback.message.answer("🗑 Mijoz to‘liq o‘chirildi.")
+
+
+# =========================
+# 🔙 ORQAGA
+# =========================
+@router.callback_query(F.data == "back")
+async def back_to_admin(callback: CallbackQuery):
+
+    if callback.from_user.id != ADMIN_ID:
         return
 
-    user_id = int(message.text)
-    pool = message.bot.get("db")
-
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO users (telegram_id, is_active)
-            VALUES ($1, TRUE)
-            ON CONFLICT (telegram_id)
-            DO UPDATE SET is_active = TRUE
-        """, user_id)
-
-    await message.answer("✅ Mijoz muvaffaqiyatli qo‘shildi.")
-    await state.clear()
+    await callback.message.answer(
+        "👨‍💼 Admin Panel",
+        reply_markup=admin_menu()
+    )
