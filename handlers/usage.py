@@ -1,92 +1,88 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
+from config import ADMIN_ID
 from states import AddUsage
-from keyboards import confirm_keyboard
+from database import pool, confirm_usage, reject_usage
+from keyboards.inline import confirm_usage_keyboard
 
 router = Router()
 
-# ➕ Ishlatish tugmasi
-@router.callback_query(F.data.startswith("use_"))
+
+# =========================
+# ➕ ISHLATISH BOSHLASH
+# =========================
+@router.callback_query(F.data.startswith("add_usage_"))
 async def start_usage(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
 
-    user_id = int(callback.data.split("_")[1])
+    if callback.from_user.id != ADMIN_ID:
+        return
 
-    # user_id ni state ga saqlaymiz
-    await state.update_data(target_user=user_id)
-    await state.set_state(AddUsage.waiting_for_amount)
+    user_id = int(callback.data.split("_")[2])
 
-    await callback.message.answer("📦 Nechta dona ishlatildi?")
+    await state.update_data(user_id=user_id)
+
+    await callback.message.answer("📦 Ishlatish miqdorini kiriting:")
+    await state.set_state(AddUsage.waiting_amount)
 
 
-# 📩 Miqdor qabul qilish
-@router.message(AddUsage.waiting_for_amount)
-async def process_usage_amount(message: Message, state: FSMContext):
+# =========================
+# 📩 MIQDOR QABUL QILISH
+# =========================
+@router.message(AddUsage.waiting_amount)
+async def save_usage(message: Message, state: FSMContext):
+
+    if message.from_user.id != ADMIN_ID:
+        return
 
     if not message.text.isdigit():
-        await message.answer("❌ Faqat raqam kiriting!")
+        await message.answer("❌ Faqat raqam kiriting.")
         return
 
     amount = int(message.text)
     data = await state.get_data()
-    user_id = data["target_user"]
-
-    pool = message.bot.get("db")
+    user_id = data["user_id"]
 
     async with pool.acquire() as conn:
-
-        result = await conn.fetchrow("""
-            INSERT INTO usage (user_id, amount)
+        usage_id = await conn.fetchval("""
+            INSERT INTO usages (user_id, amount)
             VALUES ($1, $2)
             RETURNING id
         """, user_id, amount)
 
-    usage_id = result["id"]
-
-    # Mijozga tasdiqlash yuboramiz
+    # Mijozga tasdiqlash xabari
     await message.bot.send_message(
         user_id,
         f"📦 Siz {amount} dona ishlatdingiz.\nTasdiqlaysizmi?",
-        reply_markup=confirm_keyboard(usage_id)
+        reply_markup=confirm_usage_keyboard(usage_id)
     )
 
-    await message.answer("✅ Mijozga yuborildi. Tasdiq kutilmoqda.")
-
+    await message.answer("📨 Mijozga yuborildi.")
     await state.clear()
 
 
-# ✅ Ha
+# =========================
+# ✅ TASDIQLASH
+# =========================
 @router.callback_query(F.data.startswith("confirm_"))
-async def confirm_usage(callback: CallbackQuery):
+async def confirm_usage_handler(callback: CallbackQuery):
 
     usage_id = int(callback.data.split("_")[1])
-    pool = callback.bot.get("db")
 
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE usage
-            SET confirmed=TRUE
-            WHERE id=$1
-        """, usage_id)
+    await confirm_usage(usage_id)
 
-    await callback.answer("Tasdiqlandi ✅")
-    await callback.message.answer("✅ Ishlatish tasdiqlandi.")
+    await callback.message.answer("✅ Tasdiqlandi.")
 
 
-# ❌ Yo‘q
-@router.callback_query(F.data.startswith("deny_"))
-async def deny_usage(callback: CallbackQuery):
+# =========================
+# ❌ RAD ETISH
+# =========================
+@router.callback_query(F.data.startswith("reject_"))
+async def reject_usage_handler(callback: CallbackQuery):
 
     usage_id = int(callback.data.split("_")[1])
-    pool = callback.bot.get("db")
 
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            DELETE FROM usage
-            WHERE id=$1
-        """, usage_id)
+    await reject_usage(usage_id)
 
-    await callback.answer("Rad etildi ❌")
-    await callback.message.answer("❌ Ishlatish rad etildi.")
+    await callback.message.answer("❌ Rad etildi.")
