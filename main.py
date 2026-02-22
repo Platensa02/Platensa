@@ -22,9 +22,9 @@ from aiogram.filters import Command
 # 🔐 CONFIG (ICHI)
 # =========================
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "PASTE_TOKEN_HERE")
-ADMIN_ID = int(os.environ.get("ADMIN_ID", "123456789"))
-DATABASE_URL = os.environ.get("DATABASE_URL", "PASTE_DATABASE_URL_HERE")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8484276514:AAGQImSug67K2JNYJV_h10u1qME1-V_i2l0")
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "6780565815"))
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://platensa02:ndRSl4NLzhTX1s6OPiOyBZUJcnFEveEL@dpg-d6d2gu1r0fns739jcj4g-a/platensa02")
 
 
 # =========================
