@@ -2,7 +2,19 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
 # =========================
-# 👨‍💼 ADMIN MENYU
+# 🔙 ORQAGA TUGMASI
+# =========================
+def back_button():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🔙 Orqaga")]
+        ],
+        resize_keyboard=True
+    )
+
+
+# =========================
+# 👨‍💼 ADMIN BOSH MENYU
 # =========================
 def admin_menu():
     return ReplyKeyboardMarkup(
@@ -16,7 +28,7 @@ def admin_menu():
 
 
 # =========================
-# 👤 MIJOZ MENYU
+# 👤 MIJOZ BOSH MENYU
 # =========================
 def client_menu():
     return ReplyKeyboardMarkup(
