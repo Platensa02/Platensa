@@ -1,13 +1,16 @@
 from aiogram.fsm.state import State, StatesGroup
 
-# ➕ Mijoz qo‘shish
-class AddClient(StatesGroup):
-    waiting_for_id = State()
 
-# ➕ Ishlatish miqdori
+# ➕ Ishlatish qo‘shish
 class AddUsage(StatesGroup):
-    waiting_for_amount = State()
+    waiting_amount = State()
 
-# 💰 To‘lov miqdori
+
+# 💰 To‘lov qo‘shish
 class AddPayment(StatesGroup):
-    waiting_for_amount = State()
+    waiting_amount = State()
+
+
+# 👤 Yangi mijoz qo‘shish (agar kerak bo‘lsa)
+class AddClient(StatesGroup):
+    waiting_telegram_id = State()
