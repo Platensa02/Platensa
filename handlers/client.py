@@ -1,6 +1,9 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
+from config import ADMIN_ID
+from keyboards import client_menu
+
 router = Router()
 
 # 📦 Jami ishlatganim
@@ -44,5 +47,5 @@ async def my_left(callback: CallbackQuery):
     left = used - paid
 
     await callback.message.answer(
-        f"📊 To‘lanmagan dona: {left}"
+        f"📊 Qolgan dona: {left}"
     )
