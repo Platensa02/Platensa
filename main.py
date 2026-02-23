@@ -12,6 +12,7 @@ from database import init_db
 import handlers
 import payment
 import delete
+import auth
 
 # =====================
 # ENV VARIABLES
@@ -37,6 +38,7 @@ dp = Dispatcher(storage=MemoryStorage())
 handlers.setup(dp, bot)
 payment.setup(dp, bot)
 delete.setup(dp, bot)
+auth.setup(dp)
 
 # =====================
 # MAIN FUNKSIYA
