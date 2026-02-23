@@ -26,10 +26,10 @@ dp = Dispatcher()
 router = Router()
 dp.include_router(router)
 
-# ================= MEMORY =================
+# ================= STATE =================
 
 user_state = {}
-admin_temp = {}
+admin_selected_user = {}
 
 # ================= DATABASE =================
 
@@ -54,7 +54,8 @@ async def init_db():
 def admin_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📋 Mijozlar")]
+            [KeyboardButton(text="📋 Mijozlar")],
+            [KeyboardButton(text="⬅️ Chiqish")]
         ],
         resize_keyboard=True
     )
@@ -102,13 +103,13 @@ async def handler(message: Message):
     pool = dp["pool"]
     state = user_state.get(user_id)
 
-    # BACK
-    if message.text == "⬅️ Orqaga":
+    # EXIT
+    if message.text == "⬅️ Chiqish":
         user_state[user_id] = "waiting_code"
         await message.answer("Kod kiriting:")
         return
 
-    # LOGIN STEP
+    # LOGIN
     if state == "waiting_code":
 
         if message.text == ADMIN_CODE:
@@ -147,10 +148,9 @@ async def handler(message: Message):
 
         if user:
             remaining = user["total_add"] - user["total_close"]
-
             await message.answer(
-                f"Jami qo‘shilgan: {user['total_add']} dona\n"
-                f"Jami yopilgan: {user['total_close']} dona\n"
+                f"Qo‘shilgan: {user['total_add']} dona\n"
+                f"Yopilgan: {user['total_close']} dona\n"
                 f"Qolgan: {remaining} dona"
             )
         return
@@ -174,6 +174,28 @@ async def handler(message: Message):
 
         text += "\nID yozing:"
         await message.answer(text)
+        user_state[user_id] = "admin_select"
+        return
+
+    # ADMIN SELECT USER
+    if state == "admin_select" and message.text.isdigit():
+
+        admin_selected_user[user_id] = int(message.text)
+        user_state[user_id] = "admin_action"
+
+        await message.answer("Nechta dona?")
+        return
+
+    # ADMIN AMOUNT
+    if state == "admin_action" and message.text.isdigit():
+
+        amount = int(message.text)
+        target_id = admin_selected_user.get(user_id)
+
+        await message.answer(
+            "Tasdiqlaysizmi?",
+            reply_markup=confirm_keyboard("add", target_id, amount)
+        )
         return
 
 # ================= CALLBACK =================
@@ -203,6 +225,17 @@ async def callback(call: CallbackQuery):
                     amount, target_id
                 )
 
+            user = await conn.fetchrow(
+                "SELECT telegram_id FROM users WHERE id=$1",
+                target_id
+            )
+
+        if user:
+            await bot.send_message(
+                user["telegram_id"],
+                f"{amount} dona {'qo‘shildi' if action=='add' else 'yopildi'}."
+            )
+
         await call.message.answer("Bajarildi")
 
     else:
@@ -210,7 +243,7 @@ async def callback(call: CallbackQuery):
 
     await call.answer()
 
-# ================= MAIN =================
+# ================= RUN =================
 
 async def main():
     await init_db()
