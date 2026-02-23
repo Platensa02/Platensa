@@ -5,11 +5,15 @@ from aiogram import types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
 
 from menu import admin_menu, client_menu
 from report import report_handler
 
+# Global variables
 bot = None
 ADMIN_ID = None
 DATABASE_URL = None
@@ -25,10 +29,11 @@ def setup(dp, bot_instance):
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # register handlers
+    # Register handlers
     dp.message(Command("start"))(start)
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
     dp.message(F.text == "📊 Hisobot")(report_handler)
+    dp.callback_query(F.data.startswith("select_"))(select_client)
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
 
@@ -37,7 +42,6 @@ def setup(dp, bot_instance):
 # STATES
 # =====================
 class AddProduct(StatesGroup):
-    user_id = State()
     amount = State()
 
 
@@ -55,52 +59,77 @@ async def start(message: types.Message):
 
 
 # =====================
-# ADD PRODUCT START
+# ADD PRODUCT
 # =====================
 async def add_product_start(message: types.Message, state: FSMContext):
 
     if message.from_user.id != ADMIN_ID:
         return
 
-    await message.answer("Mijoz Telegram ID sini yuboring:")
-    await state.set_state(AddProduct.user_id)
+    conn = await asyncpg.connect(DATABASE_URL)
+    clients = await conn.fetch("SELECT user_id, name FROM clients")
+    await conn.close()
 
-    # ID qabul qilishni shu yerda davom ettiramiz
-    @dp.message(AddProduct.user_id)
-    async def get_user_id(message: types.Message, state: FSMContext):
+    keyboard = []
 
-        await state.update_data(user_id=int(message.text))
-        await message.answer("Miqdorni yozing:")
-        await state.set_state(AddProduct.amount)
-
-        @dp.message(AddProduct.amount)
-        async def get_amount(message: types.Message, state: FSMContext):
-
-            data = await state.get_data()
-            user_id = data["user_id"]
-            amount = int(message.text)
-
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="✅ Tasdiqlash",
-                        callback_data=f"confirm_{user_id}_{amount}"
-                    ),
-                    InlineKeyboardButton(
-                        text="❌ Bekor qilish",
-                        callback_data="cancel"
-                    )
-                ]
-            ])
-
-            await bot.send_message(
-                user_id,
-                f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?",
-                reply_markup=keyboard
+    for client in clients:
+        keyboard.append([
+            InlineKeyboardButton(
+                text=client["name"],
+                callback_data=f"select_{client['user_id']}"
             )
+        ])
 
-            await message.answer("Mijozga yuborildi ✅")
-            await state.clear()
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    await message.answer("Mijozni tanlang:", reply_markup=markup)
+
+
+# =====================
+# CLIENT SELECT
+# =====================
+async def select_client(callback: types.CallbackQuery, state: FSMContext):
+
+    user_id = int(callback.data.split("_")[1])
+
+    await state.update_data(user_id=user_id)
+
+    await callback.message.answer("Miqdorni yozing:")
+    await state.set_state(AddProduct.amount)
+
+    await callback.answer()
+
+
+# =====================
+# AMOUNT + CONFIRM BUTTONS
+# =====================
+async def get_amount(message: types.Message, state: FSMContext):
+
+    data = await state.get_data()
+    user_id = data["user_id"]
+    amount = int(message.text)
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Tasdiqlash",
+                callback_data=f"confirm_{user_id}_{amount}"
+            ),
+            InlineKeyboardButton(
+                text="❌ Bekor qilish",
+                callback_data="cancel"
+            )
+        ]
+    ])
+
+    await bot.send_message(
+        user_id,
+        f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?",
+        reply_markup=keyboard
+    )
+
+    await message.answer("Mijozga yuborildi ✅")
+    await state.clear()
 
 
 # =====================
@@ -119,6 +148,12 @@ async def confirm_product(callback: types.CallbackQuery):
     """, int(amount), int(user_id))
 
     await conn.close()
+
+    # mijozga xabar
+    await bot.send_message(
+        int(user_id),
+        f"✅ Tasdiqlandi!\n📦 Qo‘shildi: {amount} dona"
+    )
 
     await callback.message.edit_text("✅ Tasdiqlandi!")
     await callback.answer()
