@@ -153,19 +153,31 @@ async def confirm_product(callback: types.CallbackQuery):
 
     await conn.close()
 
+    # 🔥 MIJOZGA XABAR
     await bot.send_message(
         int(user_id),
         f"✅ Tasdiqlandi!\n📦 Qo‘shildi: {amount} dona"
     )
 
+    # 🔥 ADMINGA XABAR
+    await bot.send_message(
+        ADMIN_ID,
+        f"📢 Mijoz tasdiqladi!\n👤 ID: {user_id}\n📦 Miqdor: {amount}"
+    )
+
     await callback.message.edit_text("✅ Tasdiqlandi!")
     await callback.answer()
-
 
 # =====================
 # CANCEL
 # =====================
 async def cancel_product(callback: types.CallbackQuery):
 
+    # 🔥 ADMINGA XABAR
+    await bot.send_message(
+        ADMIN_ID,
+        "❌ Mijoz mahsulotni rad etdi."
+    )
+
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer()
+    await callback.answer() 
