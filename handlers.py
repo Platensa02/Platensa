@@ -10,37 +10,9 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from menu import admin_menu, client_menu
 from report import report_handler
 
-# Global variables
 bot = None
 ADMIN_ID = None
 DATABASE_URL = None
-
-
-# =====================
-# SETUP
-# =====================
-def setup(dp, bot_instance):
-    global bot, ADMIN_ID, DATABASE_URL
-
-    bot = bot_instance
-    ADMIN_ID = int(os.getenv("ADMIN_ID"))
-    DATABASE_URL = os.getenv("DATABASE_URL")
-
-    # Start
-    dp.message(Command("start"))(start)
-
-    # Admin buttons
-    dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
-    dp.message(F.text == "📊 Hisobot")(report_handler)
-
-    # Callback buttons
-    dp.callback_query(F.data.startswith("select_"))(select_client)
-    dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
-    dp.callback_query(F.data == "cancel")(cancel_product)
-dp.callback_query(F.data.startswith("confirm_delete_"))(confirm_delete)
-
-    # 🔥 FSM handler
-    dp.message(AddProduct.amount)(get_amount)
 
 
 # =====================
@@ -51,20 +23,45 @@ class AddProduct(StatesGroup):
 
 
 # =====================
+# SETUP
+# =====================
+def setup(dp, bot_instance):
+
+    global bot, ADMIN_ID, DATABASE_URL
+
+    bot = bot_instance
+    ADMIN_ID = int(os.getenv("ADMIN_ID"))
+    DATABASE_URL = os.getenv("DATABASE_URL")
+
+    # Commands
+    dp.message(Command("start"))(start)
+
+    # Buttons
+    dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
+    dp.message(F.text == "📊 Hisobot")(report_handler)
+
+    # Callbacks
+    dp.callback_query(F.data.startswith("select_"))(select_client)
+    dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
+    dp.callback_query(F.data == "cancel")(cancel_product)
+
+    # FSM
+    dp.message(AddProduct.amount)(get_amount)
+
+
+# =====================
 # START
 # =====================
 async def start(message: types.Message):
 
-    user = message.from_user
-
-    if user.id == ADMIN_ID:
+    if message.from_user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
     else:
         await message.answer("Mijoz panel:", reply_markup=client_menu())
 
 
 # =====================
-# ADD PRODUCT
+# ADD PRODUCT START
 # =====================
 async def add_product_start(message: types.Message, state: FSMContext):
 
@@ -75,23 +72,22 @@ async def add_product_start(message: types.Message, state: FSMContext):
     clients = await conn.fetch("SELECT user_id, name FROM clients")
     await conn.close()
 
-    keyboard = []
+    keyboard = [
+        [InlineKeyboardButton(
+            text=c["name"],
+            callback_data=f"select_{c['user_id']}"
+        )]
+        for c in clients
+    ]
 
-    for client in clients:
-        keyboard.append([
-            InlineKeyboardButton(
-                text=client["name"],
-                callback_data=f"select_{client['user_id']}"
-            )
-        ])
-
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    await message.answer("Mijozni tanlang:", reply_markup=markup)
+    await message.answer(
+        "Mijozni tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+    )
 
 
 # =====================
-# CLIENT SELECT
+# SELECT CLIENT
 # =====================
 async def select_client(callback: types.CallbackQuery, state: FSMContext):
 
@@ -106,7 +102,7 @@ async def select_client(callback: types.CallbackQuery, state: FSMContext):
 
 
 # =====================
-# AMOUNT ENTERED
+# GET AMOUNT
 # =====================
 async def get_amount(message: types.Message, state: FSMContext):
 
@@ -142,24 +138,14 @@ async def get_amount(message: types.Message, state: FSMContext):
 # =====================
 async def confirm_product(callback: types.CallbackQuery):
 
-    # 🔒 faqat confirm_ bilan boshlansa ishlasin
     if not callback.data.startswith("confirm_"):
         return
 
-    try:
-        _, user_id, amount = callback.data.split("_")
-        user_id = int(user_id)
-        amount = int(amount)
-    except:
-        await callback.answer("Xatolik ❌", show_alert=True)
-        return
+    _, user_id, amount = callback.data.split("_")
+    user_id = int(user_id)
+    amount = int(amount)
 
     conn = await asyncpg.connect(DATABASE_URL)
-
-    client = await conn.fetchrow(
-        "SELECT name FROM clients WHERE user_id=$1",
-        user_id
-    )
 
     await conn.execute("""
         UPDATE clients
@@ -167,37 +153,38 @@ async def confirm_product(callback: types.CallbackQuery):
         WHERE user_id=$2
     """, amount, user_id)
 
+    client = await conn.fetchrow(
+        "SELECT name FROM clients WHERE user_id=$1",
+        user_id
+    )
+
     await conn.close()
 
-    client_name = client["name"] if client else "Noma’lum"
+    name = client["name"] if client else "Noma’lum"
 
-    # MIJOZGA
     await bot.send_message(
         user_id,
         f"✅ Tasdiqlandi!\n📦 Qo‘shildi: {amount} dona"
     )
 
-    # ADMINGA
     await bot.send_message(
         ADMIN_ID,
-        f"📢 Mijoz tasdiqladi!\n"
-        f"👤 Ism: {client_name}\n"
-        f"📦 Miqdor: {amount}"
+        f"📢 Tasdiqlandi\n👤 Ism: {name}\n📦 Miqdor: {amount}"
     )
 
     await callback.message.edit_text("✅ Tasdiqlandi!")
     await callback.answer()
+
 
 # =====================
 # CANCEL
 # =====================
 async def cancel_product(callback: types.CallbackQuery):
 
-    # 🔥 ADMINGA XABAR
     await bot.send_message(
         ADMIN_ID,
-        "❌ Mijoz mahsulotni rad etdi."
+        "❌ Mijoz rad etdi."
     )
 
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer() 
+    await callback.answer()
