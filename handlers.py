@@ -162,7 +162,7 @@ async def confirm_product(callback: types.CallbackQuery):
     # 🔥 ADMINGA XABAR
     await bot.send_message(
         ADMIN_ID,
-        f"📢 Mijoz tasdiqladi!\n👤 ID: {user_id}\n📦 Miqdor: {amount}"
+        f"📢 Mijoz tasdiqladi!\👤 Ism: {client_name}\n📦 Miqdor: {amount}"
     )
 
     await callback.message.edit_text("✅ Tasdiqlandi!")
