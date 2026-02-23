@@ -1,24 +1,19 @@
-async def start(message: types.Message):
+import asyncpg
+import os
 
-    user = message.from_user
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-    if user.id == ADMIN_ID:
-        await message.answer("Admin panel:", reply_markup=admin_menu())
-        return
-
+async def init_db():
     conn = await asyncpg.connect(DATABASE_URL)
 
-    existing = await conn.fetchrow(
-        "SELECT * FROM clients WHERE user_id=$1",
-        user.id
-    )
-
-    if not existing:
-        await conn.execute("""
-            INSERT INTO clients (user_id, name, confirmed_amount, payments)
-            VALUES ($1, $2, 0, 0)
-        """, user.id, user.full_name)
+    await conn.execute("""
+    CREATE TABLE IF NOT EXISTS clients (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT UNIQUE,
+        name TEXT,
+        confirmed_amount INTEGER DEFAULT 0,
+        payments INTEGER DEFAULT 0
+    );
+    """)
 
     await conn.close()
-
-    await message.answer("Mijoz panel:", reply_markup=client_menu())
