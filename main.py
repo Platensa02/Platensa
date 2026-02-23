@@ -5,6 +5,7 @@ import asyncpg
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # =====================
 # ENV VARIABLES
@@ -54,6 +55,24 @@ async def start(message: types.Message):
     await conn.close()
 
     await message.answer("Bot ishlayapti ✅")
+
+def admin_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📦 Mahsulot qo‘shish")],
+            [KeyboardButton(text="💰 To‘lov kiritish")],
+            [KeyboardButton(text="📊 Hisobot")]
+        ],
+        resize_keyboard=True
+    )
+
+@dp.message(Command("start"))
+async def start(message: types.Message):
+
+    if message.from_user.id == ADMIN_ID:
+        await message.answer("Admin panel:", reply_markup=admin_menu())
+    else:
+        await message.answer("Bot ishlayapti ✅")
 
 
 # =====================
