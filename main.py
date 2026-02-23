@@ -35,10 +35,10 @@ dp = Dispatcher(storage=MemoryStorage())
 # =====================
 # Bu juda muhim!
 # handlers.py ichidagi funksiyalar shu yerda ulanadi
+auth.setup(dp)
 handlers.setup(dp, bot)
 payment.setup(dp, bot)
 delete.setup(dp, bot)
-auth.setup(dp)
 
 # =====================
 # MAIN FUNKSIYA
