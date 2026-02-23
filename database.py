@@ -1,20 +1,19 @@
 import asyncpg
-import asyncpg
+import os
 
-pool = None
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-async def init_db(database_url):
-    global pool
-    pool = await asyncpg.create_pool(database_url)
+async def init_db():
+    conn = await asyncpg.connect(DATABASE_URL)
 
-    async with pool.acquire() as conn:
-        await conn.execute("""
-        CREATE TABLE IF NOT EXISTS users(
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT UNIQUE,
-            name TEXT,
-            role TEXT,
-            total_add INTEGER DEFAULT 0,
-            total_close INTEGER DEFAULT 0
-        )
-        """)
+    await conn.execute("""
+    CREATE TABLE IF NOT EXISTS clients (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT UNIQUE,
+        name TEXT,
+        confirmed_amount INTEGER DEFAULT 0,
+        payments INTEGER DEFAULT 0
+    );
+    """)
+
+    await conn.close()
