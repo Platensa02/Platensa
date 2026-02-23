@@ -80,8 +80,6 @@ async def start(message: Message):
 # ================= MAIN MESSAGE HANDLER =================
 
 @router.message()
-
-
 async def main_handler(message: Message):
 
     if not message.text:
