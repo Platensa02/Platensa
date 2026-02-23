@@ -37,6 +37,7 @@ def setup(dp, bot_instance):
     dp.callback_query(F.data.startswith("select_"))(select_client)
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
+dp.callback_query(F.data.startswith("confirm_delete_"))(confirm_delete)
 
     # 🔥 FSM handler
     dp.message(AddProduct.amount)(get_amount)
