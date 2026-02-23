@@ -5,10 +5,7 @@ from aiogram import types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
-)
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from menu import admin_menu, client_menu
 from report import report_handler
@@ -29,13 +26,20 @@ def setup(dp, bot_instance):
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # Register handlers
+    # Start
     dp.message(Command("start"))(start)
+
+    # Admin buttons
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
     dp.message(F.text == "📊 Hisobot")(report_handler)
+
+    # Callback buttons
     dp.callback_query(F.data.startswith("select_"))(select_client)
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
+
+    # 🔥 FSM handler
+    dp.message(AddProduct.amount)(get_amount)
 
 
 # =====================
@@ -101,7 +105,7 @@ async def select_client(callback: types.CallbackQuery, state: FSMContext):
 
 
 # =====================
-# AMOUNT + CONFIRM BUTTONS
+# AMOUNT ENTERED
 # =====================
 async def get_amount(message: types.Message, state: FSMContext):
 
@@ -149,7 +153,6 @@ async def confirm_product(callback: types.CallbackQuery):
 
     await conn.close()
 
-    # mijozga xabar
     await bot.send_message(
         int(user_id),
         f"✅ Tasdiqlandi!\n📦 Qo‘shildi: {amount} dona"
