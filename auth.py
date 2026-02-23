@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from menu import admin_menu, client_menu
 
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
-ACCESS_CODE = "12345"
+ACCESS_CODE = os.getenv("ACCESS_CODE")
 
 # =====================
 # STATES
