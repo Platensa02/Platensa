@@ -10,7 +10,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from menu import admin_menu, client_menu
 from report import report_handler
 
-# Global variables
 bot = None
 ADMIN_ID = None
 DATABASE_URL = None
@@ -26,7 +25,7 @@ def setup(dp, bot_instance):
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # Handlers register
+    # Register handlers
     dp.message(Command("start"))(start)
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
     dp.message(F.text == "📊 Hisobot")(report_handler)
@@ -49,17 +48,14 @@ async def start(message: types.Message):
 
     user = message.from_user
 
-    # ADMIN
     if user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
-        return
-
-    # CLIENT
-    await message.answer("Mijoz panel:", reply_markup=client_menu())
+    else:
+        await message.answer("Mijoz panel:", reply_markup=client_menu())
 
 
 # =====================
-# ADD PRODUCT
+# ADD PRODUCT FLOW
 # =====================
 async def add_product_start(message: types.Message, state: FSMContext):
 
@@ -80,7 +76,7 @@ async def get_user_id(message: types.Message, state: FSMContext):
     await state.set_state(AddProduct.amount)
 
 
-# Miqdor qabul qilish
+# Miqdor qabul qilish + TASDIQLASH
 @dp.message(AddProduct.amount)
 async def get_amount(message: types.Message, state: FSMContext):
 
