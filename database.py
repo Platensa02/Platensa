@@ -12,7 +12,8 @@ async def init_db():
         user_id BIGINT UNIQUE,
         name TEXT,
         confirmed_amount INTEGER DEFAULT 0,
-        payments INTEGER DEFAULT 0
+        payments INTEGER DEFAULT 0,
+        is_approved BOOLEAN DEFAULT FALSE
     );
     """)
 
