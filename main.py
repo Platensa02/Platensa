@@ -6,8 +6,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from menu import admin_menu
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
 
 # =====================
 # ENV VARIABLES
@@ -30,25 +28,19 @@ async def start(message: types.Message):
 
     user = message.from_user
 
-    # ADMIN
+    # ===== ADMIN =====
     if user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
         return
 
-@dp.message(Command("start"))
-async def start(message: types.Message):
-
-    user = message.from_user
-
+    # ===== CLIENT =====
     conn = await asyncpg.connect(DATABASE_URL)
 
-    # tekshiramiz
     client = await conn.fetchrow(
         "SELECT * FROM clients WHERE user_id=$1",
         user.id
     )
 
-    # agar yo'q bo'lsa qo'shamiz
     if not client:
         await conn.execute(
             "INSERT INTO clients (user_id, name) VALUES ($1, $2)",
@@ -56,19 +48,16 @@ async def start(message: types.Message):
             user.full_name
         )
 
-        # admin ga xabar
         await bot.send_message(
             ADMIN_ID,
             f"🆕 Yangi mijoz qo‘shildi:\n"
             f"👤 Ism: {user.full_name}\n"
             f"🆔 ID: {user.id}"
-       ) 
+        )
 
     await conn.close()
 
     await message.answer("Bot ishlayapti ✅")
-
-
 
 # =====================
 # MAIN
