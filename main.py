@@ -66,14 +66,6 @@ def admin_menu():
         resize_keyboard=True
     )
 
-@dp.message(Command("start"))
-async def start(message: types.Message):
-
-    if message.from_user.id == ADMIN_ID:
-        await message.answer("Admin panel:", reply_markup=admin_menu())
-    else:
-        await message.answer("Bot ishlayapti ✅")
-
 
 # =====================
 # MAIN
