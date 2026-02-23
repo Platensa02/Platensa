@@ -47,6 +47,8 @@ def setup(dp, bot_instance):
     ~F.data.startswith("confirm_delete_")
 )(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
+dp.callback_query(F.data.startswith("approve_"))(approve_client)
+dp.callback_query(F.data.startswith("reject_"))(reject_client)
 
     # FSM
     dp.message(AddProduct.amount)(get_amount)
@@ -65,18 +67,48 @@ async def start(message: types.Message):
 
     conn = await asyncpg.connect(DATABASE_URL)
 
-    # 🔎 Bazada bormi tekshiramiz
     existing = await conn.fetchrow(
         "SELECT * FROM clients WHERE user_id=$1",
         user.id
     )
 
-    # ❗ Agar yo‘q bo‘lsa qo‘shamiz
+    # Agar umuman yo‘q bo‘lsa — admin tasdiqlashga yuboramiz
     if not existing:
+
         await conn.execute("""
-            INSERT INTO clients (user_id, name, confirmed_amount)
-            VALUES ($1, $2, 0)
+            INSERT INTO clients (user_id, name, confirmed_amount, is_approved)
+            VALUES ($1, $2, 0, FALSE)
         """, user.id, user.full_name)
+
+        # 🔥 ADMINGA SO‘ROV YUBORAMIZ
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Tasdiqlash",
+                    callback_data=f"approve_{user.id}"
+                ),
+                InlineKeyboardButton(
+                    text="❌ Rad etish",
+                    callback_data=f"reject_{user.id}"
+                )
+            ]
+        ])
+
+        await bot.send_message(
+            ADMIN_ID,
+            f"🆕 Yangi mijoz so‘rovi:\n👤 {user.full_name}",
+            reply_markup=keyboard
+        )
+
+        await message.answer("⏳ Admin tasdiqlashi kutilmoqda.")
+        await conn.close()
+        return
+
+    # Agar bor bo‘lsa lekin tasdiqlanmagan bo‘lsa
+    if not existing["is_approved"]:
+        await message.answer("⏳ Admin tasdiqlashi kutilmoqda.")
+        await conn.close()
+        return
 
     await conn.close()
 
@@ -195,6 +227,40 @@ async def confirm_product(callback: types.CallbackQuery):
     )
 
     await callback.message.edit_text("✅ Tasdiqlandi!")
+    await callback.answer()
+async def approve_client(callback: types.CallbackQuery):
+
+    user_id = int(callback.data.split("_")[1])
+
+    conn = await asyncpg.connect(DATABASE_URL)
+
+    await conn.execute("""
+        UPDATE clients
+        SET is_approved=TRUE
+        WHERE user_id=$1
+    """, user_id)
+
+    await conn.close()
+
+    await bot.send_message(user_id, "✅ Siz tasdiqlandingiz!")
+
+    await callback.message.edit_text("✅ Mijoz tasdiqlandi.")
+    await callback.answer()
+
+
+async def reject_client(callback: types.CallbackQuery):
+
+    user_id = int(callback.data.split("_")[1])
+
+    conn = await asyncpg.connect(DATABASE_URL)
+
+    await conn.execute("DELETE FROM clients WHERE user_id=$1", user_id)
+
+    await conn.close()
+
+    await bot.send_message(user_id, "❌ So‘rovingiz rad etildi.")
+
+    await callback.message.edit_text("❌ Mijoz rad etildi.")
     await callback.answer()
 
 
