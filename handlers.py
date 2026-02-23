@@ -334,3 +334,11 @@ async def reject_client(callback: types.CallbackQuery):
 
     await callback.message.edit_text("❌ Mijoz rad etildi.")
     await callback.answer()
+
+# =====================
+# CANCEL CALLBACK
+# =====================
+async def cancel_product(callback: types.CallbackQuery):
+
+    await callback.message.edit_text("❌ Bekor qilindi.")
+    await callback.answer()
