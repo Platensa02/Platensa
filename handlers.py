@@ -6,6 +6,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from report import report_handler
 
 from menu import admin_menu
 
@@ -33,6 +34,7 @@ def setup(dp, bot_instance):
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
 
+dp.message(F.text == "📊 Hisobot")(report_handler)
 
 # =====================
 # STATES
