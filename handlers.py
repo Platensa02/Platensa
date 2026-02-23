@@ -34,7 +34,7 @@ def setup(dp, bot_instance):
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # Commands
-    dp.message(Command("start"))(start)
+    
 
     # Buttons
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
