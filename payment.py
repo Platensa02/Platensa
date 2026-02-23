@@ -12,6 +12,13 @@ DATABASE_URL = None
 
 
 # =====================
+# STATES
+# =====================
+class Payment(StatesGroup):
+    amount = State()
+
+
+# =====================
 # SETUP
 # =====================
 def setup(dp, bot_instance):
@@ -22,17 +29,9 @@ def setup(dp, bot_instance):
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # register handlers
     dp.message(F.text == "💰 To‘lov kiritish")(payment_start)
     dp.callback_query(F.data.startswith("pay_"))(select_payment_client)
     dp.message(Payment.amount)(process_payment)
-
-
-# =====================
-# STATES
-# =====================
-class Payment(StatesGroup):
-    amount = State()
 
 
 # =====================
@@ -65,7 +64,7 @@ async def payment_start(message: types.Message):
 # =====================
 # SELECT CLIENT
 # =====================
-async def select_client(callback: types.CallbackQuery, state: FSMContext):
+async def select_payment_client(callback: types.CallbackQuery, state: FSMContext):
 
     user_id = int(callback.data.split("_")[1])
 
@@ -91,11 +90,12 @@ async def select_client(callback: types.CallbackQuery, state: FSMContext):
         f"📦 Foydalangan: {used}\n"
         f"💵 To‘langan: {paid}\n"
         f"📊 Qoldiq: {balance}\n\n"
-        f"Endi miqdorni yozing:"
+        f"Endi to‘lov summasini yozing:"
     )
 
-    await state.set_state(AddProduct.amount)
+    await state.set_state(Payment.amount)
     await callback.answer()
+
 
 # =====================
 # PROCESS PAYMENT
@@ -108,14 +108,12 @@ async def process_payment(message: types.Message, state: FSMContext):
 
     conn = await asyncpg.connect(DATABASE_URL)
 
-    # to‘lov qo‘shish
     await conn.execute("""
         UPDATE clients
         SET payments = payments + $1
         WHERE user_id=$2
     """, amount, user_id)
 
-    # to‘liq ma’lumot
     row = await conn.fetchrow("""
         SELECT name, confirmed_amount, payments
         FROM clients
@@ -129,7 +127,7 @@ async def process_payment(message: types.Message, state: FSMContext):
     paid = row["payments"]
     balance = used - paid
 
-    # 🔥 MIJOZGA
+    # MIJOZGA
     await bot.send_message(
         user_id,
         f"💰 To‘lov qabul qilindi: {amount}\n\n"
@@ -138,7 +136,7 @@ async def process_payment(message: types.Message, state: FSMContext):
         f"📊 Qoldiq: {balance}"
     )
 
-    # 🔥 ADMINGA (ID emas, ISM)
+    # ADMINGA
     await message.answer(
         f"✅ To‘lov saqlandi\n\n"
         f"👤 Mijoz: {name}\n"
