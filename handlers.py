@@ -50,9 +50,7 @@ def setup(dp, bot_instance):
 
     dp.callback_query(F.data == "cancel")(cancel_product)
 
-    # 🔥 YANGI TASDIQLASH CALLBACKLARI
-    dp.callback_query(F.data.startswith("approve_"))(approve_client)
-    dp.callback_query(F.data.startswith("reject_"))(reject_client)
+   
 
     # FSM
     dp.message(AddProduct.amount)(get_amount)
@@ -211,24 +209,6 @@ async def confirm_product(callback: types.CallbackQuery):
     await callback.message.edit_text("✅ Tasdiqlandi!")
     await callback.answer()
 
-async def approve_client(callback: types.CallbackQuery):
-
-    user_id = int(callback.data.split("_")[1])
-
-    conn = await asyncpg.connect(DATABASE_URL)
-
-    await conn.execute("""
-        UPDATE clients
-        SET is_approved=TRUE
-        WHERE user_id=$1
-    """, user_id)
-
-    await conn.close()
-
-    await bot.send_message(user_id, "✅ Siz tasdiqlandingiz!")
-
-    await callback.message.edit_text("✅ Mijoz tasdiqlandi.")
-    await callback.answer()
 
 
 async def cancel_product(callback: types.CallbackQuery):
