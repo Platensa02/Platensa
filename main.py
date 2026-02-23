@@ -6,6 +6,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from menu import admin_menu
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
 
 # =====================
 # ENV VARIABLES
@@ -23,6 +25,16 @@ dp = Dispatcher(storage=MemoryStorage())
 # =====================
 # START COMMAND
 # =====================
+@dp.message(Command("start"))
+async def start(message: types.Message):
+
+    user = message.from_user
+
+    # ADMIN
+    if user.id == ADMIN_ID:
+        await message.answer("Admin panel:", reply_markup=admin_menu())
+        return
+
 @dp.message(Command("start"))
 async def start(message: types.Message):
 
@@ -56,15 +68,6 @@ async def start(message: types.Message):
 
     await message.answer("Bot ishlayapti ✅")
 
-def admin_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📦 Mahsulot qo‘shish")],
-            [KeyboardButton(text="💰 To‘lov kiritish")],
-            [KeyboardButton(text="📊 Hisobot")]
-        ],
-        resize_keyboard=True
-    )
 
 
 # =====================
