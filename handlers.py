@@ -64,26 +64,29 @@ async def start(message: types.Message):
 
     user = message.from_user
 
+    # 🔥 ADMIN ANIQLASH
     if user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
         return
 
+    # 🔎 DATABASEGA ULANISH
     conn = await asyncpg.connect(DATABASE_URL)
 
+    # 🔍 Mijozni tekshirish
     existing = await conn.fetchrow(
         "SELECT * FROM clients WHERE user_id=$1",
         user.id
     )
 
-    # Agar umuman yo‘q bo‘lsa — admin tasdiqlashga yuboramiz
+    # ❗ Agar umuman yo‘q bo‘lsa
     if not existing:
 
         await conn.execute("""
-            INSERT INTO clients (user_id, name, confirmed_amount, is_approved)
-            VALUES ($1, $2, 0, FALSE)
+            INSERT INTO clients (user_id, name, confirmed_amount, payments, is_approved)
+            VALUES ($1, $2, 0, 0, FALSE)
         """, user.id, user.full_name)
 
-        # 🔥 ADMINGA SO‘ROV YUBORAMIZ
+        # 🔥 ADMINGA SO‘ROV YUBORISH
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(
@@ -107,12 +110,13 @@ async def start(message: types.Message):
         await conn.close()
         return
 
-    # Agar bor bo‘lsa lekin tasdiqlanmagan bo‘lsa
+    # ❗ Agar bor lekin tasdiqlanmagan bo‘lsa
     if not existing["is_approved"]:
         await message.answer("⏳ Admin tasdiqlashi kutilmoqda.")
         await conn.close()
         return
 
+    # ✅ Agar tasdiqlangan bo‘lsa
     await conn.close()
 
     await message.answer("Mijoz panel:", reply_markup=client_menu())
