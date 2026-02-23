@@ -2,16 +2,19 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from config import BOT_TOKEN, DATABASE_URL
-from database import init_db
-import handlers
+import database
+from handlers import router
 
 async def main():
+
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
-    await init_db(dp, DATABASE_URL)
+    await database.init_db(DATABASE_URL)
 
-    dp.include_router(handlers.router)
+    dp.include_router(router)
+
+    await bot.delete_webhook(drop_pending_updates=True)
 
     await dp.start_polling(bot)
 
