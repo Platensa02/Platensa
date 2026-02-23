@@ -88,12 +88,14 @@ async def process_payment(message: types.Message, state: FSMContext):
 
     conn = await asyncpg.connect(DATABASE_URL)
 
+    # To‘lov qo‘shish
     await conn.execute("""
         UPDATE clients
         SET payments = payments + $1
         WHERE user_id=$2
     """, amount, user_id)
 
+    # To‘liq ma’lumot olish
     row = await conn.fetchrow("""
         SELECT confirmed_amount, payments
         FROM clients
@@ -102,17 +104,30 @@ async def process_payment(message: types.Message, state: FSMContext):
 
     await conn.close()
 
-    balance = row["confirmed_amount"] - row["payments"]
+    used = row["confirmed_amount"]
+    paid = row["payments"]
+    balance = used - paid
 
-    # mijozga
+    # =====================
+    # MIJOZGA TO‘LIQ HISOBOT
+    # =====================
     await bot.send_message(
         user_id,
-        f"💰 To‘lov qabul qilindi: {amount}\n📊 Qoldiq: {balance}"
+        f"💰 To‘lov qabul qilindi: {amount}\n\n"
+        f"📦 Umumiy foydalangan: {used}\n"
+        f"💵 To‘langan: {paid}\n"
+        f"📊 Qoldiq: {balance}"
     )
 
-    # admin
+    # =====================
+    # ADMINGA TO‘LIQ HISOBOT
+    # =====================
     await message.answer(
-        f"✅ To‘lov saqlandi\n💰 Miqdor: {amount}\n📊 Yangi balans: {balance}"
+        f"✅ To‘lov saqlandi\n\n"
+        f"👤 Mijoz ID: {user_id}\n"
+        f"📦 Foydalangan: {used}\n"
+        f"💵 To‘langan: {paid}\n"
+        f"📊 Qoldiq: {balance}"
     )
 
     await state.clear()
