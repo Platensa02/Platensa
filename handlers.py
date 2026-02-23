@@ -60,6 +60,7 @@ def setup(dp, bot_instance):
 # =====================
 # START
 # =====================
+ 
 async def start(message: types.Message):
 
     user = message.from_user
@@ -75,16 +76,25 @@ async def start(message: types.Message):
         user.id
     )
 
+    # Agar yangi mijoz bo‘lsa
     if not existing:
+
         await conn.execute("""
             INSERT INTO clients (user_id, name, confirmed_amount, payments)
             VALUES ($1, $2, 0, 0)
         """, user.id, user.full_name)
 
+        # 🔥 ADMINGA XABAR
+        await bot.send_message(
+            ADMIN_ID,
+            f"🆕 Yangi mijoz kirdi:\n"
+            f"👤 Ism: {user.full_name}\n"
+            f"🆔 ID: {user.id}"
+        )
+
     await conn.close()
 
     await message.answer("Mijoz panel:", reply_markup=client_menu())
- 
    
 # =====================
 # ADD PRODUCT START
