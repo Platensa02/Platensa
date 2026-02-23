@@ -142,27 +142,40 @@ async def get_amount(message: types.Message, state: FSMContext):
 async def confirm_product(callback: types.CallbackQuery):
 
     _, user_id, amount = callback.data.split("_")
+    user_id = int(user_id)
+    amount = int(amount)
 
     conn = await asyncpg.connect(DATABASE_URL)
 
+    # 🔎 Mijoz ismini olamiz
+    client = await conn.fetchrow(
+        "SELECT name FROM clients WHERE user_id=$1",
+        user_id
+    )
+
+    # Balansni yangilaymiz
     await conn.execute("""
         UPDATE clients
         SET confirmed_amount = confirmed_amount + $1
         WHERE user_id=$2
-    """, int(amount), int(user_id))
+    """, amount, user_id)
 
     await conn.close()
 
+    client_name = client["name"] if client else "Noma’lum"
+
     # 🔥 MIJOZGA XABAR
     await bot.send_message(
-        int(user_id),
+        user_id,
         f"✅ Tasdiqlandi!\n📦 Qo‘shildi: {amount} dona"
     )
 
-    # 🔥 ADMINGA XABAR
+    # 🔥 ADMINGA XABAR (ID o‘rniga ism)
     await bot.send_message(
         ADMIN_ID,
-        f"📢 Mijoz tasdiqladi!\👤 Ism: {client_name}\n📦 Miqdor: {amount}"
+        f"📢 Mijoz tasdiqladi!\n"
+        f"👤 Ism: {client_name}\n"
+        f"📦 Miqdor: {amount}"
     )
 
     await callback.message.edit_text("✅ Tasdiqlandi!")
