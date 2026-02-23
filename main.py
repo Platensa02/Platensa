@@ -5,7 +5,7 @@ import asyncpg
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from menu import admin_menu
 
 # =====================
 # ENV VARIABLES
@@ -50,9 +50,7 @@ async def start(message: types.Message):
             f"🆕 Yangi mijoz qo‘shildi:\n"
             f"👤 Ism: {user.full_name}\n"
             f"🆔 ID: {user.id}"
-        )
-        print("USER ID:", user.id)
-print("ADMIN ID:", ADMIN_ID)
+       ) 
 
     await conn.close()
 
