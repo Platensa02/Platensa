@@ -4,6 +4,7 @@ from aiogram.filters import CommandStart
 
 import database
 from config import ADMIN_CODE, CLIENT_CODE
+from keyboards import admin_menu, client_menu
 
 router = Router()
 
@@ -53,6 +54,7 @@ async def handler(message: Message):
         user_state[user_id] = "client"
         await message.answer("Ro‘yxatdan o‘tdingiz ✅")
         return
+     
 
     if state == "client" and text == "📊 Statistika":
 
