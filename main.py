@@ -10,6 +10,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from database import init_db
 import handlers
+import payment
 
 # =====================
 # ENV VARIABLES
@@ -33,6 +34,7 @@ dp = Dispatcher(storage=MemoryStorage())
 # Bu juda muhim!
 # handlers.py ichidagi funksiyalar shu yerda ulanadi
 handlers.setup(dp, bot)
+payment.setup(dp, bot)
 
 # =====================
 # MAIN FUNKSIYA
