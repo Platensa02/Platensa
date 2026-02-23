@@ -4,6 +4,7 @@
 # =======================
 
 import os
+print("DATABASE_URL =", os.getenv("DATABASE_URL"))
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
