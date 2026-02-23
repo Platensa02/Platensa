@@ -54,7 +54,7 @@ async def delete_start(message: types.Message):
 
 
 # =====================
-# ASK CONFIRMATION
+# ASK CONFIRM
 # =====================
 async def ask_confirm(callback: types.CallbackQuery):
 
@@ -90,29 +90,19 @@ async def confirm_delete(callback: types.CallbackQuery):
 
     conn = await asyncpg.connect(DATABASE_URL)
 
-    # Mijozni o‘chirish
-    await conn.execute(
-        "DELETE FROM clients WHERE user_id=$1",
-        user_id
-    )
+    # Avval mijozga xabar yuboramiz
+    try:
+        await bot.send_message(
+            user_id,
+            "❌ Siz admin tomonidan tizimdan o‘chirildingiz."
+        )
+    except:
+        pass  # agar user botni block qilgan bo‘lsa xato bermaydi
 
-    # Agar alohida jadval bo‘lsa tozalash
-    await conn.execute(
-        "DELETE FROM payments WHERE user_id=$1",
-        user_id
-    )
-
-    await conn.execute(
-        "DELETE FROM products WHERE user_id=$1",
-        user_id
-    )
+    # Keyin bazadan o‘chiramiz
+    await conn.execute("DELETE FROM clients WHERE user_id=$1", user_id)
 
     await conn.close()
-
-    await bot.send_message(
-        user_id,
-        "❌ Siz admin tomonidan tizimdan o‘chirildingiz."
-    )
 
     await callback.message.edit_text("✅ Mijoz to‘liq o‘chirildi.")
     await callback.answer()
