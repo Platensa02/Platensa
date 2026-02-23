@@ -42,17 +42,20 @@ def setup(dp, bot_instance):
 
     # Callbacks
     dp.callback_query(F.data.startswith("select_"))(select_client)
+
     dp.callback_query(
-    F.data.startswith("confirm_") &
-    ~F.data.startswith("confirm_delete_")
-)(confirm_product)
+        F.data.startswith("confirm_") &
+        ~F.data.startswith("confirm_delete_")
+    )(confirm_product)
+
     dp.callback_query(F.data == "cancel")(cancel_product)
-dp.callback_query(F.data.startswith("approve_"))(approve_client)
-dp.callback_query(F.data.startswith("reject_"))(reject_client)
+
+    # 🔥 YANGI TASDIQLASH CALLBACKLARI
+    dp.callback_query(F.data.startswith("approve_"))(approve_client)
+    dp.callback_query(F.data.startswith("reject_"))(reject_client)
 
     # FSM
     dp.message(AddProduct.amount)(get_amount)
-
 
 # =====================
 # START
