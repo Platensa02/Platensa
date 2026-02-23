@@ -1,29 +1,35 @@
+import os
 import asyncpg
+
 from aiogram import types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import (
-    ReplyKeyboardMarkup, KeyboardButton,
-    InlineKeyboardMarkup, InlineKeyboardButton
-)
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Global variables (main.py dan beriladi)
+from menu import admin_menu
+
+# Global variables
 bot = None
 ADMIN_ID = None
 DATABASE_URL = None
 
 
+# =====================
+# SETUP
+# =====================
 def setup(dp, bot_instance):
     global bot, ADMIN_ID, DATABASE_URL
+
     bot = bot_instance
-    ADMIN_ID = int(bot_instance.token and __import__("os").getenv("ADMIN_ID"))
-    DATABASE_URL = __import__("os").getenv("DATABASE_URL")
+    ADMIN_ID = int(os.getenv("ADMIN_ID"))
+    DATABASE_URL = os.getenv("DATABASE_URL")
 
     # handlers register
     dp.message(Command("start"))(start)
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
-    dp.message(AddProduct.amount)(add_amount)
+    dp.message(AddProduct.user_id)(get_user_id)
+    dp.message(AddProduct.amount)(get_amount)
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
 
@@ -47,44 +53,7 @@ async def start(message: types.Message):
         await message.answer("Admin panel:", reply_markup=admin_menu())
         return
 
-    conn = await asyncpg.connect(DATABASE_URL)
-
-    client = await conn.fetchrow(
-        "SELECT * FROM clients WHERE user_id=$1",
-        user.id
-    )
-
-    if not client:
-        await conn.execute(
-            "INSERT INTO clients (user_id, name) VALUES ($1, $2)",
-            user.id,
-            user.full_name
-        )
-
-        await bot.send_message(
-            ADMIN_ID,
-            f"🆕 Yangi mijoz qo‘shildi:\n"
-            f"👤 Ism: {user.full_name}\n"
-            f"🆔 ID: {user.id}"
-        )
-
-    await conn.close()
-
     await message.answer("Bot ishlayapti ✅")
-
-
-# =====================
-# ADMIN MENU
-# =====================
-def admin_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📦 Mahsulot qo‘shish")],
-            [KeyboardButton(text="💰 To‘lov kiritish")],
-            [KeyboardButton(text="📊 Hisobot")]
-        ],
-        resize_keyboard=True
-    )
 
 
 # =====================
@@ -99,18 +68,19 @@ async def add_product_start(message: types.Message, state: FSMContext):
     await state.set_state(AddProduct.user_id)
 
 
-async def add_amount(message: types.Message, state: FSMContext):
+async def get_user_id(message: types.Message, state: FSMContext):
 
     await state.update_data(user_id=int(message.text))
+
     await message.answer("Miqdorni yozing:")
     await state.set_state(AddProduct.amount)
 
 
-async def add_amount(message: types.Message, state: FSMContext):
+async def get_amount(message: types.Message, state: FSMContext):
 
     data = await state.get_data()
-    amount = int(message.text)
     user_id = data["user_id"]
+    amount = int(message.text)
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -131,7 +101,7 @@ async def add_amount(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await message.answer("Yuborildi ✅")
+    await message.answer("Mijozga yuborildi ✅")
     await state.clear()
 
 
@@ -160,5 +130,6 @@ async def confirm_product(callback: types.CallbackQuery):
 # CANCEL
 # =====================
 async def cancel_product(callback: types.CallbackQuery):
+
     await callback.message.edit_text("❌ Bekor qilindi")
     await callback.answer()
