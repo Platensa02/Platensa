@@ -21,7 +21,6 @@ class Access(StatesGroup):
 # =====================
 def setup(dp):
 
-    dp.message(Command("start"))(start)
     dp.message(Access.code)(check_code)
 
 
