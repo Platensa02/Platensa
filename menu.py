@@ -5,9 +5,9 @@ def admin_menu():
         keyboard=[
             [KeyboardButton(text="📦 Mahsulot qo‘shish")],
             [KeyboardButton(text="💰 To‘lov kiritish")],
-            [KeyboardButton(text="📊 Hisobot")]
+            [KeyboardButton(text="📊 Hisobot")],
+            [KeyboardButton(text="🗑 Mijoz o‘chirish")]
         ],
-            [KeyboardButton(text="🗑 Mijoz o‘chirish")], 
         resize_keyboard=True
     )
 
