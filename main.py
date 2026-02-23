@@ -10,10 +10,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from database import init_db
+import auth
 import handlers
 import payment
 import delete
-import auth
 
 # =====================
 # ENV VARIABLES
