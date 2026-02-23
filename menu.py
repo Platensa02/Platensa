@@ -7,6 +7,7 @@ def admin_menu():
             [KeyboardButton(text="💰 To‘lov kiritish")],
             [KeyboardButton(text="📊 Hisobot")]
         ],
+            [KeyboardButton(text="🗑 Mijoz o‘chirish")], 
         resize_keyboard=True
     )
 
