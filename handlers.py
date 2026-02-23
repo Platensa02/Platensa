@@ -8,7 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from report import report_handler
 
-from menu import admin_menu
+from menu import admin_menu, client_menu
 
 # Global variables
 bot = None
@@ -53,6 +53,8 @@ async def start(message: types.Message):
     if user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
         return
+
+        await message.answer("Mijoz panel:", reply_markup=client_menu())
 
     await message.answer("Bot ishlayapti ✅")
 
