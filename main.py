@@ -51,6 +51,8 @@ async def start(message: types.Message):
             f"👤 Ism: {user.full_name}\n"
             f"🆔 ID: {user.id}"
         )
+        print("USER ID:", user.id)
+print("ADMIN ID:", ADMIN_ID)
 
     await conn.close()
 
