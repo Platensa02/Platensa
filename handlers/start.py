@@ -2,7 +2,6 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from config import ADMIN_ID
 from database import get_user_by_tg, create_user
 from keyboards.reply import admin_menu, client_menu
 
