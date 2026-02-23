@@ -25,7 +25,7 @@ def setup(dp, bot_instance):
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # Register handlers
+    # register handlers
     dp.message(Command("start"))(start)
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
     dp.message(F.text == "📊 Hisobot")(report_handler)
@@ -55,7 +55,7 @@ async def start(message: types.Message):
 
 
 # =====================
-# ADD PRODUCT FLOW
+# ADD PRODUCT START
 # =====================
 async def add_product_start(message: types.Message, state: FSMContext):
 
@@ -65,46 +65,42 @@ async def add_product_start(message: types.Message, state: FSMContext):
     await message.answer("Mijoz Telegram ID sini yuboring:")
     await state.set_state(AddProduct.user_id)
 
+    # ID qabul qilishni shu yerda davom ettiramiz
+    @dp.message(AddProduct.user_id)
+    async def get_user_id(message: types.Message, state: FSMContext):
 
-# ID qabul qilish
-@dp.message(AddProduct.user_id)
-async def get_user_id(message: types.Message, state: FSMContext):
+        await state.update_data(user_id=int(message.text))
+        await message.answer("Miqdorni yozing:")
+        await state.set_state(AddProduct.amount)
 
-    await state.update_data(user_id=int(message.text))
+        @dp.message(AddProduct.amount)
+        async def get_amount(message: types.Message, state: FSMContext):
 
-    await message.answer("Miqdorni yozing:")
-    await state.set_state(AddProduct.amount)
+            data = await state.get_data()
+            user_id = data["user_id"]
+            amount = int(message.text)
 
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="✅ Tasdiqlash",
+                        callback_data=f"confirm_{user_id}_{amount}"
+                    ),
+                    InlineKeyboardButton(
+                        text="❌ Bekor qilish",
+                        callback_data="cancel"
+                    )
+                ]
+            ])
 
-# Miqdor qabul qilish + TASDIQLASH
-@dp.message(AddProduct.amount)
-async def get_amount(message: types.Message, state: FSMContext):
-
-    data = await state.get_data()
-    user_id = data["user_id"]
-    amount = int(message.text)
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="✅ Tasdiqlash",
-                callback_data=f"confirm_{user_id}_{amount}"
-            ),
-            InlineKeyboardButton(
-                text="❌ Bekor qilish",
-                callback_data="cancel"
+            await bot.send_message(
+                user_id,
+                f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?",
+                reply_markup=keyboard
             )
-        ]
-    ])
 
-    await bot.send_message(
-        user_id,
-        f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?",
-        reply_markup=keyboard
-    )
-
-    await message.answer("Mijozga yuborildi ✅")
-    await state.clear()
+            await message.answer("Mijozga yuborildi ✅")
+            await state.clear()
 
 
 # =====================
