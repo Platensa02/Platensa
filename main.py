@@ -80,6 +80,8 @@ async def start(message: Message):
 # ================= MAIN MESSAGE HANDLER =================
 
 @router.message()
+
+
 async def main_handler(message: Message):
 
     if not message.text:
@@ -111,6 +113,78 @@ async def main_handler(message: Message):
 
         await message.answer("Noto‘g‘ri kod ❌")
         return
+
+@router.callback_query()
+async def callbacks(call: CallbackQuery):
+    user_id = call.from_user.id
+    pool = dp["pool"]
+
+    if call.data == "cancel":
+        user_state[user_id] = "admin"
+        await call.message.edit_text("Bekor qilindi.")
+        await call.message.answer("Admin panel", reply_markup=admin_menu())
+        return
+
+    if call.data == "confirm_add":
+
+        data = admin_context.get(user_id)
+        if not data:
+            return
+
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE users SET total_add = total_add + $1 WHERE id=$2",
+                data["amount"],
+                data["client_id"]
+            )
+
+            client = await conn.fetchrow(
+                "SELECT telegram_id,total_add,total_close FROM users WHERE id=$1",
+                data["client_id"]
+            )
+
+        remaining = client["total_add"] - client["total_close"]
+
+        await bot.send_message(
+            client["telegram_id"],
+            f"📦 {data['amount']} dona qo‘shildi.\n"
+            f"📊 Qolgan: {remaining}"
+        )
+
+        user_state[user_id] = "admin"
+        await call.message.edit_text("Qo‘shildi ✅")
+        await call.message.answer("Admin panel", reply_markup=admin_menu())
+        return
+
+    if call.data == "confirm_close":
+
+        data = admin_context.get(user_id)
+        if not data:
+            return
+
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE users SET total_close = total_close + $1 WHERE id=$2",
+                data["amount"],
+                data["client_id"]
+            )
+
+            client = await conn.fetchrow(
+                "SELECT telegram_id,total_add,total_close FROM users WHERE id=$1",
+                data["client_id"]
+            )
+
+        remaining = client["total_add"] - client["total_close"]
+
+        await bot.send_message(
+            client["telegram_id"],
+            f"📤 {data['amount']} dona yopildi.\n"
+            f"📊 Qolgan: {remaining}"
+        )
+
+        user_state[user_id] = "admin"
+        await call.message.edit_text("Yopildi ✅")
+        await call.message.answer("Admin panel", reply_markup=admin_menu())
 
     # ================= SAVE CLIENT =================
     if state == "waiting_name":
