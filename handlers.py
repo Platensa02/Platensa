@@ -256,4 +256,81 @@ async def approve_client(callback: types.CallbackQuery):
     await callback.message.edit_text("✅ Mijoz tasdiqlandi.")
     await callback.answer()
 
+# =====================
+# APPROVE NEW CLIENT
+# =====================
+async def approve_client(callback: types.CallbackQuery):
 
+    if not callback.data.startswith("approve_"):
+        return
+
+    try:
+        user_id = int(callback.data.split("_")[1])
+    except:
+        await callback.answer("Xatolik ❌", show_alert=True)
+        return
+
+    conn = await asyncpg.connect(DATABASE_URL)
+
+    # is_approved ni TRUE qilamiz
+    await conn.execute("""
+        UPDATE clients
+        SET is_approved = TRUE
+        WHERE user_id = $1
+    """, user_id)
+
+    client = await conn.fetchrow(
+        "SELECT name FROM clients WHERE user_id=$1",
+        user_id
+    )
+
+    await conn.close()
+
+    name = client["name"] if client else "Noma’lum"
+
+    # MIJOZGA XABAR
+    await bot.send_message(
+        user_id,
+        "✅ Siz admin tomonidan tasdiqlandingiz!"
+    )
+
+    # ADMINGA XABAR
+    await callback.message.edit_text(
+        f"✅ Mijoz tasdiqlandi\n👤 {name}"
+    )
+
+    await callback.answer()
+
+
+# =====================
+# REJECT NEW CLIENT
+# =====================
+async def reject_client(callback: types.CallbackQuery):
+
+    if not callback.data.startswith("reject_"):
+        return
+
+    try:
+        user_id = int(callback.data.split("_")[1])
+    except:
+        await callback.answer("Xatolik ❌", show_alert=True)
+        return
+
+    conn = await asyncpg.connect(DATABASE_URL)
+
+    # Mijozni butunlay o‘chiramiz
+    await conn.execute(
+        "DELETE FROM clients WHERE user_id=$1",
+        user_id
+    )
+
+    await conn.close()
+
+    # MIJOZGA XABAR
+    await bot.send_message(
+        user_id,
+        "❌ Sizning so‘rovingiz rad etildi."
+    )
+
+    await callback.message.edit_text("❌ Mijoz rad etildi.")
+    await callback.answer()
