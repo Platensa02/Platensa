@@ -1,75 +1,164 @@
-from aiogram import Router
-from aiogram.types import Message
-from aiogram.filters import CommandStart
+import asyncpg
+from aiogram import types, F
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import (
+    ReplyKeyboardMarkup, KeyboardButton,
+    InlineKeyboardMarkup, InlineKeyboardButton
+)
 
-import database
-from config import ADMIN_CODE, CLIENT_CODE
-from keyboards import admin_menu, client_menu
+# Global variables (main.py dan beriladi)
+bot = None
+ADMIN_ID = None
+DATABASE_URL = None
 
-router = Router()
 
-user_state = {}
+def setup(dp, bot_instance):
+    global bot, ADMIN_ID, DATABASE_URL
+    bot = bot_instance
+    ADMIN_ID = int(bot_instance.token and __import__("os").getenv("ADMIN_ID"))
+    DATABASE_URL = __import__("os").getenv("DATABASE_URL")
 
+    # handlers register
+    dp.message(Command("start"))(start)
+    dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
+    dp.message(AddProduct.amount)(add_amount)
+    dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
+    dp.callback_query(F.data == "cancel")(cancel_product)
+
+
+# =====================
+# STATES
+# =====================
+class AddProduct(StatesGroup):
+    user_id = State()
+    amount = State()
+
+
+# =====================
 # START
-@router.message(CommandStart())
-async def start(message: Message):
-    user_state[message.from_user.id] = "waiting_code"
-    await message.answer("Kod kiriting:")
+# =====================
+async def start(message: types.Message):
 
-# MAIN LOGIC
-@router.message()
-async def handler(message: Message):
+    user = message.from_user
 
-    if not message.text:
+    if user.id == ADMIN_ID:
+        await message.answer("Admin panel:", reply_markup=admin_menu())
         return
 
-    user_id = message.from_user.id
-    text = message.text
-    state = user_state.get(user_id)
+    conn = await asyncpg.connect(DATABASE_URL)
 
-    pool = database.pool
+    client = await conn.fetchrow(
+        "SELECT * FROM clients WHERE user_id=$1",
+        user.id
+    )
 
-    if state == "waiting_code":
+    if not client:
+        await conn.execute(
+            "INSERT INTO clients (user_id, name) VALUES ($1, $2)",
+            user.id,
+            user.full_name
+        )
 
-        if text == ADMIN_CODE:
-            user_state[user_id] = "admin"
-            await message.answer("Admin kirdingiz ✅")
-            return
+        await bot.send_message(
+            ADMIN_ID,
+            f"🆕 Yangi mijoz qo‘shildi:\n"
+            f"👤 Ism: {user.full_name}\n"
+            f"🆔 ID: {user.id}"
+        )
 
-        if text == CLIENT_CODE:
-            user_state[user_id] = "waiting_name"
-            await message.answer("Ismingizni yozing:")
-            return
+    await conn.close()
 
-    if state == "waiting_name":
+    await message.answer("Bot ishlayapti ✅")
 
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO users(telegram_id,name,role)
-                VALUES($1,$2,'client')
-                ON CONFLICT (telegram_id)
-                DO UPDATE SET name=EXCLUDED.name
-            """, user_id, text)
 
-        user_state[user_id] = "client"
-        await message.answer("Ro‘yxatdan o‘tdingiz ✅")
+# =====================
+# ADMIN MENU
+# =====================
+def admin_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📦 Mahsulot qo‘shish")],
+            [KeyboardButton(text="💰 To‘lov kiritish")],
+            [KeyboardButton(text="📊 Hisobot")]
+        ],
+        resize_keyboard=True
+    )
+
+
+# =====================
+# ADD PRODUCT FLOW
+# =====================
+async def add_product_start(message: types.Message, state: FSMContext):
+
+    if message.from_user.id != ADMIN_ID:
         return
-     
 
-    if state == "client" and text == "📊 Statistika":
+    await message.answer("Mijoz Telegram ID sini yuboring:")
+    await state.set_state(AddProduct.user_id)
 
-        async with pool.acquire() as conn:
-            user = await conn.fetchrow(
-                "SELECT * FROM users WHERE telegram_id=$1",
-                user_id
+
+async def add_amount(message: types.Message, state: FSMContext):
+
+    await state.update_data(user_id=int(message.text))
+    await message.answer("Miqdorni yozing:")
+    await state.set_state(AddProduct.amount)
+
+
+async def add_amount(message: types.Message, state: FSMContext):
+
+    data = await state.get_data()
+    amount = int(message.text)
+    user_id = data["user_id"]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Tasdiqlash",
+                callback_data=f"confirm_{user_id}_{amount}"
+            ),
+            InlineKeyboardButton(
+                text="❌ Bekor qilish",
+                callback_data="cancel"
             )
+        ]
+    ])
 
-        if user:
-            remaining = user["total_add"] - user["total_close"]
+    await bot.send_message(
+        user_id,
+        f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?",
+        reply_markup=keyboard
+    )
 
-            await message.answer(
-                f"Qo‘shilgan: {user['total_add']} dona\n"
-                f"Yopilgan: {user['total_close']} dona\n"
-                f"Qolgan: {remaining} dona"
-            )
-        return
+    await message.answer("Yuborildi ✅")
+    await state.clear()
+
+
+# =====================
+# CONFIRM
+# =====================
+async def confirm_product(callback: types.CallbackQuery):
+
+    _, user_id, amount = callback.data.split("_")
+
+    conn = await asyncpg.connect(DATABASE_URL)
+
+    await conn.execute("""
+        UPDATE clients
+        SET confirmed_amount = confirmed_amount + $1
+        WHERE user_id=$2
+    """, int(amount), int(user_id))
+
+    await conn.close()
+
+    await callback.message.edit_text("✅ Tasdiqlandi!")
+    await callback.answer()
+
+
+# =====================
+# CANCEL
+# =====================
+async def cancel_product(callback: types.CallbackQuery):
+    await callback.message.edit_text("❌ Bekor qilindi")
+    await callback.answer()
