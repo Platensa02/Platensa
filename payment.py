@@ -65,17 +65,37 @@ async def payment_start(message: types.Message):
 # =====================
 # SELECT CLIENT
 # =====================
-async def select_payment_client(callback: types.CallbackQuery, state: FSMContext):
+async def select_client(callback: types.CallbackQuery, state: FSMContext):
 
     user_id = int(callback.data.split("_")[1])
 
+    conn = await asyncpg.connect(DATABASE_URL)
+
+    row = await conn.fetchrow("""
+        SELECT name, confirmed_amount, payments
+        FROM clients
+        WHERE user_id=$1
+    """, user_id)
+
+    await conn.close()
+
+    name = row["name"]
+    used = row["confirmed_amount"]
+    paid = row["payments"]
+    balance = used - paid
+
     await state.update_data(user_id=user_id)
 
-    await callback.message.answer("To‘lov summasini yozing:")
-    await state.set_state(Payment.amount)
+    await callback.message.answer(
+        f"👤 Mijoz: {name}\n\n"
+        f"📦 Foydalangan: {used}\n"
+        f"💵 To‘langan: {paid}\n"
+        f"📊 Qoldiq: {balance}\n\n"
+        f"Endi miqdorni yozing:"
+    )
 
+    await state.set_state(AddProduct.amount)
     await callback.answer()
-
 
 # =====================
 # PROCESS PAYMENT
@@ -88,45 +108,41 @@ async def process_payment(message: types.Message, state: FSMContext):
 
     conn = await asyncpg.connect(DATABASE_URL)
 
-    # To‘lov qo‘shish
+    # to‘lov qo‘shish
     await conn.execute("""
         UPDATE clients
         SET payments = payments + $1
         WHERE user_id=$2
     """, amount, user_id)
 
-    # To‘liq ma’lumot olish
+    # to‘liq ma’lumot
     row = await conn.fetchrow("""
-        SELECT confirmed_amount, payments
+        SELECT name, confirmed_amount, payments
         FROM clients
         WHERE user_id=$1
     """, user_id)
 
     await conn.close()
 
+    name = row["name"]
     used = row["confirmed_amount"]
     paid = row["payments"]
     balance = used - paid
 
-    # =====================
-    # MIJOZGA TO‘LIQ HISOBOT
-    # =====================
+    # 🔥 MIJOZGA
     await bot.send_message(
         user_id,
         f"💰 To‘lov qabul qilindi: {amount}\n\n"
-        f"📦 Umumiy foydalangan: {used}\n"
+        f"📦 Foydalangan: {used}\n"
         f"💵 To‘langan: {paid}\n"
         f"📊 Qoldiq: {balance}"
     )
 
-    # =====================
-    # ADMINGA TO‘LIQ HISOBOT
-    # =====================
+    # 🔥 ADMINGA (ID emas, ISM)
     await message.answer(
         f"✅ To‘lov saqlandi\n\n"
-        f"👤 Mijoz ID: {user_id}\n"
-        f"📦 Foydalangan: {used}\n"
-        f"💵 To‘langan: {paid}\n"
+        f"👤 Mijoz: {name}\n"
+        f"💰 To‘lov: {amount}\n"
         f"📊 Qoldiq: {balance}"
     )
 
