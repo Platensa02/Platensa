@@ -33,7 +33,7 @@ def setup(dp, bot_instance):
     dp.message(AddProduct.amount)(get_amount)
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
-dp.message(F.text == "📊 Hisobot")(report_handler)
+    dp.message(F.text == "📊 Hisobot")(report_handler)
 
 # =====================
 # STATES
