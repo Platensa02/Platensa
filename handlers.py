@@ -1,46 +1,38 @@
-from aiogram import Router
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+ from aiogram import Router
+from aiogram.types import Message
 from aiogram.filters import CommandStart
 
+import database
 from config import ADMIN_CODE, CLIENT_CODE
-from keyboards import admin_menu, client_menu
-from states import user_state, admin_context
 
 router = Router()
 
+user_state = {}
 
-# ================= START =================
-
+# START
 @router.message(CommandStart())
 async def start(message: Message):
     user_state[message.from_user.id] = "waiting_code"
     await message.answer("Kod kiriting:")
 
-
-# ================= MAIN HANDLER =================
-
+# MAIN LOGIC
 @router.message()
-async def main_handler(message: Message):
+async def handler(message: Message):
+
     if not message.text:
         return
 
     user_id = message.from_user.id
     text = message.text
     state = user_state.get(user_id)
-    pool = message.bot.dispatcher["pool"]
 
-    # EXIT
-    if text == "⬅️ Chiqish":
-        user_state[user_id] = "waiting_code"
-        await message.answer("Kod kiriting:")
-        return
+    pool = database.pool
 
-    # LOGIN
     if state == "waiting_code":
 
         if text == ADMIN_CODE:
             user_state[user_id] = "admin"
-            await message.answer("Admin panelga xush kelibsiz ✅", reply_markup=admin_menu())
+            await message.answer("Admin kirdingiz ✅")
             return
 
         if text == CLIENT_CODE:
@@ -48,10 +40,6 @@ async def main_handler(message: Message):
             await message.answer("Ismingizni yozing:")
             return
 
-        await message.answer("Noto‘g‘ri kod ❌")
-        return
-
-    # SAVE CLIENT
     if state == "waiting_name":
 
         async with pool.acquire() as conn:
@@ -63,10 +51,9 @@ async def main_handler(message: Message):
             """, user_id, text)
 
         user_state[user_id] = "client"
-        await message.answer("Ro‘yxatdan o‘tdingiz ✅", reply_markup=client_menu())
+        await message.answer("Ro‘yxatdan o‘tdingiz ✅")
         return
 
-    # CLIENT STAT
     if state == "client" and text == "📊 Statistika":
 
         async with pool.acquire() as conn:
@@ -79,27 +66,8 @@ async def main_handler(message: Message):
             remaining = user["total_add"] - user["total_close"]
 
             await message.answer(
-                f"📦 Qo‘shilgan: {user['total_add']} dona\n"
-                f"📤 Yopilgan: {user['total_close']} dona\n"
-                f"📊 Qolgan: {remaining} dona"
+                f"Qo‘shilgan: {user['total_add']} dona\n"
+                f"Yopilgan: {user['total_close']} dona\n"
+                f"Qolgan: {remaining} dona"
             )
-        return
-
-    # ADMIN VIEW CLIENTS
-    if state == "admin" and text == "📋 Mijozlar":
-
-        async with pool.acquire() as conn:
-            users = await conn.fetch("SELECT * FROM users WHERE role='client'")
-
-        if not users:
-            await message.answer("Mijozlar yo‘q.")
-            return
-
-        result = "📋 Mijozlar ro‘yxati:\n\n"
-
-        for u in users:
-            remaining = u["total_add"] - u["total_close"]
-            result += f"ID:{u['id']} | {u['name']} | Qoldiq:{remaining}\n"
-
-        await message.answer(result)
         return
