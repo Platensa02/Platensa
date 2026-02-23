@@ -6,9 +6,9 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from report import report_handler
 
 from menu import admin_menu, client_menu
+from report import report_handler
 
 # Global variables
 bot = None
@@ -26,14 +26,13 @@ def setup(dp, bot_instance):
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # handlers register
+    # Handlers register
     dp.message(Command("start"))(start)
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
-    dp.message(AddProduct.user_id)(get_user_id)
-    dp.message(AddProduct.amount)(get_amount)
+    dp.message(F.text == "📊 Hisobot")(report_handler)
     dp.callback_query(F.data.startswith("confirm_"))(confirm_product)
     dp.callback_query(F.data == "cancel")(cancel_product)
-    dp.message(F.text == "📊 Hisobot")(report_handler)
+
 
 # =====================
 # STATES
@@ -50,16 +49,17 @@ async def start(message: types.Message):
 
     user = message.from_user
 
+    # ADMIN
     if user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
-        await message.answer("Mijoz panel:", reply_markup=client_menu())
         return
 
-    await message.answer("Bot ishlayapti ✅")
+    # CLIENT
+    await message.answer("Mijoz panel:", reply_markup=client_menu())
 
 
 # =====================
-# ADD PRODUCT FLOW
+# ADD PRODUCT
 # =====================
 async def add_product_start(message: types.Message, state: FSMContext):
 
@@ -70,6 +70,8 @@ async def add_product_start(message: types.Message, state: FSMContext):
     await state.set_state(AddProduct.user_id)
 
 
+# ID qabul qilish
+@dp.message(AddProduct.user_id)
 async def get_user_id(message: types.Message, state: FSMContext):
 
     await state.update_data(user_id=int(message.text))
@@ -78,6 +80,8 @@ async def get_user_id(message: types.Message, state: FSMContext):
     await state.set_state(AddProduct.amount)
 
 
+# Miqdor qabul qilish
+@dp.message(AddProduct.amount)
 async def get_amount(message: types.Message, state: FSMContext):
 
     data = await state.get_data()
