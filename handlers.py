@@ -64,6 +64,7 @@ async def start(message: types.Message):
 
     user = message.from_user
 
+    # 👑 ADMIN
     if user.id == ADMIN_ID:
         await message.answer("Admin panel:", reply_markup=admin_menu())
         return
@@ -71,35 +72,57 @@ async def start(message: types.Message):
     conn = await asyncpg.connect(DATABASE_URL)
 
     try:
-        existing = await conn.fetchrow(
+        client = await conn.fetchrow(
             "SELECT * FROM clients WHERE user_id=$1",
             user.id
         )
 
-        if not existing:
+        # Agar umuman yo‘q bo‘lsa
+        if not client:
+
             await conn.execute("""
                 INSERT INTO clients (user_id, name, confirmed_amount, payments, is_approved)
                 VALUES ($1, $2, 0, 0, FALSE)
             """, user.id, user.full_name)
 
+            # 🔔 ADMINGA SO‘ROV
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="✅ Tasdiqlash",
+                        callback_data=f"approve_{user.id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="❌ Rad etish",
+                        callback_data=f"reject_{user.id}"
+                    )
+                ]
+            ])
+
+            await bot.send_message(
+                ADMIN_ID,
+                f"🆕 Yangi mijoz:\n👤 {user.full_name}",
+                reply_markup=keyboard
+            )
+
             await message.answer("⏳ Admin tasdiqlashi kutilmoqda.")
-            await conn.close()
             return
 
-        if not existing["is_approved"]:
+        # Agar tasdiqlanmagan bo‘lsa
+        if not client["is_approved"]:
             await message.answer("⏳ Admin tasdiqlashi kutilmoqda.")
-            await conn.close()
             return
 
+        # Agar tasdiqlangan bo‘lsa
         await message.answer("Mijoz panel:", reply_markup=client_menu())
 
     except Exception as e:
         print("START ERROR:", e)
-        await message.answer("Xatolik yuz berdi ⚠️")
+        await message.answer("⚠️ Xatolik yuz berdi.")
 
     finally:
         await conn.close()
- 
+
 # =====================
 # ADD PRODUCT START
 # =====================
@@ -234,31 +257,3 @@ async def approve_client(callback: types.CallbackQuery):
     await callback.answer()
 
 
-async def reject_client(callback: types.CallbackQuery):
-
-    user_id = int(callback.data.split("_")[1])
-
-    conn = await asyncpg.connect(DATABASE_URL)
-
-    await conn.execute("DELETE FROM clients WHERE user_id=$1", user_id)
-
-    await conn.close()
-
-    await bot.send_message(user_id, "❌ So‘rovingiz rad etildi.")
-
-    await callback.message.edit_text("❌ Mijoz rad etildi.")
-    await callback.answer()
-
-
-# =====================
-# CANCEL
-# =====================
-async def cancel_product(callback: types.CallbackQuery):
-
-    await bot.send_message(
-        ADMIN_ID,
-        "❌ Mijoz rad etdi."
-    )
-
-    await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer()
