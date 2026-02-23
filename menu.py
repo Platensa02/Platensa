@@ -9,3 +9,11 @@ def admin_menu():
         ],
         resize_keyboard=True
     )
+
+def client_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📊 Hisobot")]
+        ],
+        resize_keyboard=True
+    )
