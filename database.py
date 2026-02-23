@@ -1,8 +1,11 @@
 import asyncpg
+import asyncpg
 
-async def init_db(dp, database_url):
+pool = None
+
+async def init_db(database_url):
+    global pool
     pool = await asyncpg.create_pool(database_url)
-    dp["pool"] = pool
 
     async with pool.acquire() as conn:
         await conn.execute("""
