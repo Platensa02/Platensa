@@ -1,21 +1,31 @@
+import os
 import asyncio
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
+import asyncpg
+from database import init_db
 
-from config import BOT_TOKEN, DATABASE_URL
-import database
-from handlers import router
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+async def get_conn():
+    return await asyncpg.connect(DATABASE_URL)
+
+
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    await message.answer("Bot ishlayapti ✅")
+
 
 async def main():
-
-    bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
-
-    await database.init_db(DATABASE_URL)
-
-    dp.include_router(router)
-
-    await bot.delete_webhook(drop_pending_updates=True)
-
+    await init_db()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
