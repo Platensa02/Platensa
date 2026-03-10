@@ -3,8 +3,8 @@ from aiogram import types, F
 from aiogram.filters import Command
 from menu import admin_menu, client_menu
 from report import report_handler
-from add_product import setup_add_product_handlers  # yangi modul
-from usage import setup_usage_handlers             # yangi modul
+from add_product import setup_add_product_handlers
+from usage import setup_usage_handlers
 
 bot = None
 ADMIN_ID = None
@@ -55,5 +55,4 @@ async def start(message: types.Message):
         )
 
     await conn.close()
-    from menu import client_menu
     await message.answer("Mijoz panel:", reply_markup=client_menu())
