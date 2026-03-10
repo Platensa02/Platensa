@@ -1,33 +1,44 @@
 import asyncpg
-from aiogram import F, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
-DATABASE_URL = None
-bot = None
-ADMIN_ID = None
-
+from aiogram import types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+# =====================
+# GLOBALS
+# =====================
+bot = None
+ADMIN_ID = None
+DATABASE_URL = None
+
+# =====================
+# STATES
+# =====================
 class AddProduct(StatesGroup):
     amount = State()
 
+
+# =====================
+# SETUP FUNCTION
+# =====================
 def setup_add_product_handlers(dp, bot_instance):
-    global bot, DATABASE_URL, ADMIN_ID
+    global bot, ADMIN_ID, DATABASE_URL
     bot = bot_instance
     import os
-    DATABASE_URL = os.getenv("DATABASE_URL")
     ADMIN_ID = int(os.getenv("ADMIN_ID"))
+    DATABASE_URL = os.getenv("DATABASE_URL")
 
+    # Admin tugmalari
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
-    dp.callback_query(F.data.startswith("select_"))(select_client)
-    dp.callback_query(
-        F.data.startswith("confirm_") & ~F.data.startswith("confirm_delete_")
-    )(confirm_product)
-    dp.callback_query(F.data == "cancel")(cancel_product)
     dp.message(AddProduct.amount)(get_amount)
+    dp.callback_query(F.data.startswith("select_"))(select_client)
+    dp.callback_query(F.data.startswith("confirm_") & ~F.data.startswith("confirm_delete_"))(confirm_product)
+    dp.callback_query(F.data == "cancel")(cancel_product)
 
 
+# =====================
+# HANDLERS
+# =====================
 async def add_product_start(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
@@ -41,7 +52,10 @@ async def add_product_start(message: types.Message, state: FSMContext):
         for c in clients
     ]
 
-    await message.answer("Mijozni tanlang:", reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+    await message.answer(
+        "Mijozni tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+    )
 
 
 async def select_client(callback: types.CallbackQuery, state: FSMContext):
@@ -55,7 +69,11 @@ async def select_client(callback: types.CallbackQuery, state: FSMContext):
 async def get_amount(message: types.Message, state: FSMContext):
     data = await state.get_data()
     user_id = data["user_id"]
-    amount = int(message.text)
+    try:
+        amount = int(message.text)
+    except ValueError:
+        await message.answer("❌ Iltimos, butun son kiriting.")
+        return
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -64,7 +82,12 @@ async def get_amount(message: types.Message, state: FSMContext):
         ]
     ])
 
-    await bot.send_message(user_id, f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?", reply_markup=keyboard)
+    await bot.send_message(
+        user_id,
+        f"📦 Sizga {amount} dona qo‘shildi.\nTasdiqlaysizmi?",
+        reply_markup=keyboard
+    )
+
     await message.answer("Mijozga yuborildi ✅")
     await state.clear()
 
@@ -78,7 +101,12 @@ async def confirm_product(callback: types.CallbackQuery):
     amount = int(amount)
 
     conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute("UPDATE clients SET confirmed_amount = confirmed_amount + $1 WHERE user_id=$2", amount, user_id)
+    await conn.execute("""
+        UPDATE clients
+        SET confirmed_amount = confirmed_amount + $1
+        WHERE user_id=$2
+    """, amount, user_id)
+
     client = await conn.fetchrow("SELECT name FROM clients WHERE user_id=$1", user_id)
     await conn.close()
 
