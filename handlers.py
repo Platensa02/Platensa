@@ -40,6 +40,7 @@ def setup(dp, bot_instance):
     # Buttons
     dp.message(F.text == "📦 Mahsulot qo‘shish")(add_product_start)
     dp.message(F.text == "📊 Hisobot")(report_handler)
+    dp.message(F.text == "📉 Ishlatilgan")(used_start)
 
     # Callbacks
     dp.callback_query(F.data.startswith("select_"))(select_client)
