@@ -223,4 +223,28 @@ async def cancel_product(callback: types.CallbackQuery):
     await callback.message.edit_text("❌ Bekor qilindi.")
     await callback.answer()
 
+# =====================
+# USED PRODUCT START
+# =====================
+async def used_start(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    clients = await conn.fetch("SELECT user_id, name FROM clients")
+    await conn.close()
+
+    keyboard = [
+        [InlineKeyboardButton(
+            text=c["name"],
+            callback_data=f"use_{c['user_id']}"
+        )]
+        for c in clients
+    ]
+
+    await message.answer(
+        "Mijozni tanlang (ishlatilgan mahsulotni ko‘rish uchun):",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+    )
+
  
